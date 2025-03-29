@@ -1,0 +1,50 @@
+# 编译输出
+[Bb]in/
+[Oo]bj/
+[Dd]ebug/
+[Rr]elease/
+
+# IDE 文件
+*.suo
+*.user
+*.vs/
+.vscode/
+.idea/
+*.sln.docstates
+*.sln.iml
+*.vsconfig
+
+# 依赖项
+[Nn]uget/
+*.nupkg
+packages/
+
+# 日志与缓存
+*.log
+*.cache
+*.pdb
+*.ilk
+*.ncb
+*.sbr
+*.DS_Store
+Thumbs.db
+
+# 测试相关
+TestResults/
+*.coverage
+
+# 生成文档与发布
+*.xml
+publish/
+artifacts/
+
+# 前端工具（若使用）
+node_modules/
+package-lock.json
+yarn.lock
+wwwroot/
+
+# 其他临时文件
+*.tmp
+*.temp
+Properties/launchSettings.json
