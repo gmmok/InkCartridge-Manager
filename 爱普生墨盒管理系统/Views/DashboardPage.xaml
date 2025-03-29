@@ -98,58 +98,40 @@
                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
 
                 <lvc:CartesianChart 
-                            Grid.Row="1" 
-                            x:Name="chartColorStats" 
-                            DisableAnimations="False" 
-                            AnimationsSpeed="0:0:0.5"
-                            Margin="10,10,10,36"
-                            Series="{Binding Series}" 
-                            LegendLocation="None" 
-                            Hoverable="True"
-                            Padding="20,15,20,80"
-                            MinWidth="480"
-                            Loaded="ChartColorStats_Loaded"
-                            DataClick="ChartColorStats_DataClick" Grid.RowSpan="2">
-
-                    <lvc:CartesianChart.Resources>
-                        <Style TargetType="TextBlock" x:Key="AxisLabelStyle">
-                            <Setter Property="FontSize" Value="13"/>
-                            <Setter Property="FontWeight" Value="Bold"/>
-                            <Setter Property="Foreground" Value="Black"/>
-                            <Setter Property="TextTrimming" Value="None"/>
-                            <Setter Property="TextWrapping" Value="NoWrap"/>
-                        </Style>
-                    </lvc:CartesianChart.Resources>
-                    <!--X轴标签的文字大小 LabelsRotation="-30" 位置旋转方向-->
+                    Grid.Row="1"
+                    x:Name="chartColorStats" 
+                    Series="{Binding Series}" 
+                    LegendLocation="None"
+                    MinHeight="260"
+                    Margin="5"
+                    DisableAnimations="False"
+                    Loaded="ChartColorStats_Loaded"
+                    DataClick="ChartColorStats_DataClick">
                     <lvc:CartesianChart.AxisX>
                         <lvc:Axis 
-                                Labels="{Binding Labels}" 
-                                LabelsRotation="-30"  
-                                FontSize="30" 
-                                FontWeight="Bold"
-                                Foreground="Black"
-                                Margin="0,0,0,25">
-                            <lvc:Axis.Separator>
-                                <lvc:Separator Step="1" IsEnabled="True" Stroke="#E0E0E0"/>
-                            </lvc:Axis.Separator>
+                            Title="墨盒颜色" 
+                            Labels="{Binding Labels}"
+                            LabelsRotation="60"
+                            Foreground="Black"
+                            MinRange="0"
+                            MaxRange="{Binding Labels.Count}"
+                            FontSize="11"
+                            Separator="{x:Static lvc:DefaultAxes.CleanSeparator}">
+                            <lvc:Axis.LabelFormatter>
+                                <Binding Path="LabelFormatter"/>
+                            </lvc:Axis.LabelFormatter>
                         </lvc:Axis>
                     </lvc:CartesianChart.AxisX>
-                    <!--Y轴字号和Y轴左边文字信息修改-->
                     <lvc:CartesianChart.AxisY>
                         <lvc:Axis 
-                            Title="墨盒库存数量" 
-                            MinValue="0"
-                            FontSize="16" 
-                            FontWeight="SemiBold"
-                            Foreground="Black">
+                            Title="库存数量" 
+                            LabelFormatter="{Binding Formatter}"
+                            MinValue="0">
                             <lvc:Axis.Separator>
-                                <lvc:Separator Step="1" IsEnabled="True" Stroke="#E0E0E0"/>
+                                <lvc:Separator StrokeThickness="1" StrokeDashArray="2"/>
                             </lvc:Axis.Separator>
                         </lvc:Axis>
                     </lvc:CartesianChart.AxisY>
-                    <lvc:CartesianChart.DataTooltip>
-                        <lvc:DefaultTooltip ShowSeries="True" ShowTitle="True" Background="#F5F5F5" />
-                    </lvc:CartesianChart.DataTooltip>
                 </lvc:CartesianChart>
 
                 <!-- X轴标题 -->
@@ -171,6 +153,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
+                <TextBlock Grid.Row="0" Text="库存不足墨盒" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
                 <TextBlock x:Name="tbNoDataHint" Grid.Row="1" Text="暂无墨盒数据，请先添加墨盒。" 
                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
@@ -232,4 +215,4 @@
             </Grid>
         </Border>
     </Grid>
-</Page> 
+</Page>

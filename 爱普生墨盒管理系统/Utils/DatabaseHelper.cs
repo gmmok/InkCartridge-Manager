@@ -1352,6 +1352,67 @@ namespace 爱普生墨盒管理系统.Utils
             return records;
         }
 
+        /// <summary>
+        /// 获取最近的操作记录
+        /// </summary>
+        /// <param name="limit">返回的记录数量限制</param>
+        /// <returns>操作记录列表</returns>
+        public static List<Operation> GetRecentOperations(int limit)
+        {
+            List<Operation> operations = new List<Operation>();
+            
+            try
+            {
+                using (var connection = new SQLiteConnection(ConnectionString))
+                {
+                    connection.Open();
+                    string sql = @"
+                        SELECT 
+                            r.Id, 
+                            c.Color || ' ' || c.Model AS CartridgeInfo,
+                            CASE r.OperationType 
+                                WHEN 1 THEN '入库'
+                                WHEN 2 THEN '出库'
+                                ELSE '未知操作'
+                            END AS OperationType,
+                            r.Quantity,
+                            r.OperationTime,
+                            r.Operator
+                        FROM StockRecords r
+                        JOIN Cartridges c ON r.CartridgeId = c.Id
+                        ORDER BY r.OperationTime DESC
+                        LIMIT @Limit";
+                        
+                        using (var command = new SQLiteCommand(sql, connection))
+                        {
+                            command.Parameters.AddWithValue("@Limit", limit);
+                            
+                            using (var reader = command.ExecuteReader())
+                            {
+                                while (reader.Read())
+                                {
+                                    operations.Add(new Operation
+                                    {
+                                        Id = Convert.ToInt32(reader["Id"]),
+                                        CartridgeInfo = reader["CartridgeInfo"].ToString(),
+                                        OperationType = reader["OperationType"].ToString(),
+                                        Quantity = Convert.ToInt32(reader["Quantity"]),
+                                        OperationTime = Convert.ToDateTime(reader["OperationTime"]),
+                                        Operator = reader["Operator"].ToString()
+                                    });
+                                }
+                            }
+                        }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"获取最近操作记录出错: {ex.Message}\n{ex.StackTrace}");
+            }
+            
+            return operations;
+        }
+
         #endregion
 
         #region 统计报表相关

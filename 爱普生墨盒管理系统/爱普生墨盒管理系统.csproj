@@ -216,9 +216,13 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Models\Cartridge.cs" />
+    <Compile Include="Models\Operation.cs" />
+    <Compile Include="Models\CartridgeColor.cs" />
     <Compile Include="Models\StockRecord.cs" />
+    <Compile Include="RefreshCompilation.cs" />
     <Compile Include="Utils\DatabaseHelper.cs" />
     <Compile Include="Utils\NamespaceHelper.cs" />
+    <Compile Include="Utils\OperationAdapter.cs" />
     <Compile Include="Properties\AssemblyInfo.cs">
       <SubType>Code</SubType>
     </Compile>
