@@ -98,20 +98,6 @@ namespace 爱普生墨盒管理系统.Views
                 };
             }
 
-            // 辅助方法：按指定长度分割字符串
-            private List<string> SplitString(string input, int chunkSize)
-            {
-                var result = new List<string>();
-                for (int i = 0; i < input.Length; i += chunkSize)
-                {
-                    if (i + chunkSize <= input.Length)
-                        result.Add(input.Substring(i, chunkSize));
-                    else
-                        result.Add(input.Substring(i));
-                }
-                return result;
-            }
-
             // 修改ClearData方法以包含对Series的更新通知
             public void ClearData()
             {
@@ -206,10 +192,25 @@ namespace 爱普生墨盒管理系统.Views
                 // 设置初始状态
                 SetInitialState();
                 
+                // 诊断墨盒表状态
+                Task.Run(() => {
+                    Console.WriteLine("开始诊断墨盒表状态...");
+                    string tableStatus = DatabaseHelper.GetCartridgeTableStatus();
+                    Console.WriteLine(tableStatus);
+                    
+                    // 如果表中存在记录但没有库存不足的墨盒，尝试修复表数据
+                    if (tableStatus.Contains("墨盒表总记录数:") && tableStatus.Contains("库存不足墨盒数: 0"))
+                    {
+                        Console.WriteLine("检测到墨盒表中没有库存不足记录，尝试修复...");
+                        string fixResult = DatabaseHelper.CheckAndFixCartridgeTable();
+                        Console.WriteLine(fixResult);
+                    }
+                });
+                
                 // 使用较短延迟加载数据，避免与数据库初始化冲突
                 System.Windows.Threading.DispatcherTimer timer = new System.Windows.Threading.DispatcherTimer
                 {
-                    Interval = TimeSpan.FromMilliseconds(200)
+                    Interval = TimeSpan.FromMilliseconds(500) // 增加延迟，确保诊断和修复完成
                 };
                 timer.Tick += (s, args) => 
                 {
@@ -217,6 +218,31 @@ namespace 爱普生墨盒管理系统.Views
                     {
                         LoadDashboardData();
                         ((System.Windows.Threading.DispatcherTimer)s).Stop();
+                        
+                        // 添加额外的延迟，确保图表在数据加载后能够正确渲染和应用颜色
+                        System.Windows.Threading.DispatcherTimer colorTimer = new System.Windows.Threading.DispatcherTimer
+                        {
+                            Interval = TimeSpan.FromMilliseconds(500)
+                        };
+                        colorTimer.Tick += (colorSender, colorArgs) => 
+                        {
+                            try
+                            {
+                                // 强制刷新柱状图
+                                ForceRefreshColumnChart();
+                                
+                                // 强制刷新库存不足墨盒列表
+                                Console.WriteLine("强制刷新库存不足墨盒列表...");
+                                LoadLowStockCartridges();
+                                
+                                ((System.Windows.Threading.DispatcherTimer)colorSender).Stop();
+                            }
+                            catch (Exception colorEx)
+                            {
+                                Console.WriteLine($"延迟强制刷新组件出错: {colorEx.Message}");
+                            }
+                        };
+                        colorTimer.Start();
                     }
                     catch (Exception ex)
                     {
@@ -228,6 +254,47 @@ namespace 爱普生墨盒管理系统.Views
             catch (Exception ex)
             {
                 Console.WriteLine($"仪表盘页面加载完成事件处理出错: {ex.Message}\n{ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// 强制刷新柱状图
+        /// </summary>
+        public void ForceRefreshColumnChart()
+        {
+            try
+            {
+                Console.WriteLine("开始强制刷新柱状图...");
+                
+                Dispatcher.Invoke(() =>
+                {
+                    if (chartColorStats != null)
+                    {
+                        // 确保图表可见
+                        chartColorStats.Visibility = Visibility.Visible;
+                        
+                        // 强制更新图表
+                        chartColorStats.UpdateLayout();
+                        chartColorStats.Update(true);
+                        
+                        // 如果有待应用的颜色信息，再次尝试应用
+                        if (_pendingLabels != null && _pendingLabels.Count > 0 && _pendingColorCodes != null)
+                        {
+                            Console.WriteLine("强制刷新时应用颜色设置");
+                            ApplyChartColors(_pendingLabels, _pendingColorCodes);
+                        }
+                    }
+                    else
+                    {
+                        Console.WriteLine("找不到图表控件，无法强制刷新");
+                    }
+                });
+                
+                Console.WriteLine("强制刷新柱状图完成");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"强制刷新柱状图出错: {ex.Message}\n{ex.StackTrace}");
             }
         }
 
@@ -346,6 +413,17 @@ namespace 爱普生墨盒管理系统.Views
             {
                 Console.WriteLine("开始加载颜色统计图表...");
                 
+                // 确保清空原有的图表数据
+                Dispatcher.Invoke(() => 
+                {
+                    if (chartColorStats != null)
+                    {
+                        Console.WriteLine("清空原有图表数据");
+                        chartColorStats.Series?.Clear();
+                        _chartViewModel.ClearData();
+                    }
+                });
+                
                 // 获取所有墨盒数据
                 var allCartridges = DatabaseHelper.GetAllCartridges() ?? new List<Cartridge>();
                 int cartridgeModelCount = allCartridges.Select(c => c.Model).Distinct().Count();
@@ -359,12 +437,6 @@ namespace 爱普生墨盒管理系统.Views
                     .ToList();
                 
                 Console.WriteLine($"获取到 {allColors.Count} 种颜色");
-                
-                // 在UI线程上清空图表数据
-                Dispatcher.Invoke(() => 
-                {
-                    _chartViewModel.ClearData();
-                });
                 
                 if (allColors.Count == 0)
                 {
@@ -497,9 +569,9 @@ namespace 爱普生墨盒管理系统.Views
                 }
 
                 // 停止之前可能存在的计时器
+                _colorApplyTimer?.Stop();
                 if (_colorApplyTimer != null)
                 {
-                    _colorApplyTimer.Stop();
                     _colorApplyTimer.Tick -= ColorApplyTimer_Tick;
                 }
 
@@ -559,6 +631,16 @@ namespace 爱普生墨盒管理系统.Views
                     return;
                 }
 
+                Console.WriteLine($"开始应用墨盒颜色，标签数量: {labels.Count}, 颜色代码数量: {colorCodes.Count}");
+                
+                // 调试: 输出所有标签和颜色
+                for (int i = 0; i < labels.Count; i++)
+                {
+                    string colorName = labels[i];
+                    string colorCode = colorCodes.ContainsKey(colorName) ? colorCodes[colorName] : "#CCCCCC";
+                    Console.WriteLine($"标签[{i}]: '{colorName}', 颜色代码: '{colorCode}'");
+                }
+
                 // 使用VisualTreeHelper查找所有Rectangle元素
                 var rectangles = new List<Rectangle>();
                 FindRectangles(chart, rectangles);
@@ -569,14 +651,29 @@ namespace 爱普生墨盒管理系统.Views
                     .OrderBy(r => Canvas.GetLeft(r))
                     .ToList();
 
+                Console.WriteLine($"找到 {rectangles.Count} 个矩形元素，其中 {columns.Count} 个被认为是柱子");
+
                 // 如果找到的矩形数量与颜色数量不匹配，记录警告
                 if (columns.Count != labels.Count)
                 {
-                    Console.WriteLine($"警告：找到 {columns.Count} 个柱子，但有 {labels.Count} 种颜色");
+                    Console.WriteLine($"警告：找到 {columns.Count} 个柱子，但有 {labels.Count} 种颜色，可能导致颜色错位");
+                    
+                    // 强制更新UI
+                    chart.UpdateLayout();
+                    
+                    // 尝试重新获取柱子
+                    rectangles.Clear();
+                    FindRectangles(chart, rectangles);
+                    columns = rectangles
+                        .Where(r => r.Width > 5 && r.Height > 5)
+                        .OrderBy(r => Canvas.GetLeft(r))
+                        .ToList();
+                        
+                    Console.WriteLine($"更新后: 找到 {rectangles.Count} 个矩形元素，其中 {columns.Count} 个被认为是柱子");
                 }
 
                 // 为每个找到的柱子设置对应的颜色
-                for (int i = 0; i < columns.Count && i < labels.Count; i++)
+                for (int i = 0; i < Math.Min(columns.Count, labels.Count); i++)
                 {
                     string colorName = labels[i];
                     string colorCode = colorCodes.ContainsKey(colorName) ? colorCodes[colorName] : "#CCCCCC";
@@ -588,10 +685,12 @@ namespace 爱普生墨盒管理系统.Views
                         try
                         {
                             brush = (Brush)new BrushConverter().ConvertFromString(colorCode);
+                            Console.WriteLine($"柱子[{i}]: 设置颜色 '{colorName}' ({colorCode})");
                         }
                         catch
                         {
                             brush = Brushes.Gray; // 颜色转换失败时的默认值
+                            Console.WriteLine($"柱子[{i}]: 颜色转换失败，使用默认灰色");
                         }
 
                         // 设置柱子的背景色
@@ -599,7 +698,7 @@ namespace 爱普生墨盒管理系统.Views
                     }
                     catch (Exception colEx)
                     {
-                        Console.WriteLine($"设置柱子颜色时出错: {colEx.Message}");
+                        Console.WriteLine($"设置柱子[{i}]颜色时出错: {colEx.Message}");
                     }
                 }
 
@@ -618,21 +717,59 @@ namespace 爱普生墨盒管理系统.Views
         {
             try
             {
+                Console.WriteLine("开始加载库存不足墨盒列表...");
+                
                 // 获取库存不足的墨盒
                 var lowStockCartridges = DatabaseHelper.GetLowStockCartridges() ?? new List<Cartridge>();
+                
+                Console.WriteLine($"从数据库获取到 {lowStockCartridges.Count} 个库存不足墨盒");
+                
+                // 输出调试信息，查看返回的墨盒详情
+                if (lowStockCartridges.Count > 0)
+                {
+                    Console.WriteLine("库存不足墨盒列表内容:");
+                    foreach (var cartridge in lowStockCartridges)
+                    {
+                        Console.WriteLine($"  ID: {cartridge.Id}, 颜色: {cartridge.Color}, 型号: {cartridge.Model}, 当前库存: {cartridge.CurrentStock}, 最低库存: {cartridge.MinimumStock}");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("没有库存不足的墨盒");
+                }
                 
                 // 更新UI
                 Dispatcher.Invoke(() =>
                 {
-                    if (lowStockCartridges.Count > 0)
+                    try
                     {
-                        lvLowStock.ItemsSource = lowStockCartridges;
-                        txtLowStockHint.Visibility = Visibility.Collapsed;
+                        Console.WriteLine("在UI线程更新库存不足墨盒列表...");
+                        
+                        if (lowStockCartridges.Count > 0)
+                        {
+                            Console.WriteLine("设置列表数据源并显示");
+                            lvLowStock.ItemsSource = lowStockCartridges;
+                            txtLowStockHint.Visibility = Visibility.Collapsed;
+                            
+                            // 确保列表可见
+                            lvLowStock.Visibility = Visibility.Visible;
+                            
+                            // 强制更新列表
+                            lvLowStock.Items.Refresh();
+                            lvLowStock.UpdateLayout();
+                        }
+                        else
+                        {
+                            Console.WriteLine("没有数据，显示提示文本");
+                            lvLowStock.ItemsSource = null;
+                            txtLowStockHint.Visibility = Visibility.Visible;
+                        }
+                        
+                        Console.WriteLine("UI更新完成");
                     }
-                    else
+                    catch (Exception uiEx)
                     {
-                        lvLowStock.ItemsSource = null;
-                        txtLowStockHint.Visibility = Visibility.Visible;
+                        Console.WriteLine($"在UI线程更新库存不足墨盒列表时出错: {uiEx.Message}\n{uiEx.StackTrace}");
                     }
                 });
                 
@@ -761,6 +898,26 @@ namespace 爱普生墨盒管理系统.Views
                 
                 // 刷新数据
                 LoadDashboardData();
+                
+                // 使用短延迟确保在数据加载后强制刷新柱状图
+                System.Windows.Threading.DispatcherTimer timer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(400)
+                };
+                timer.Tick += (s, args) => 
+                {
+                    try
+                    {
+                        // 强制刷新柱状图
+                        ForceRefreshColumnChart();
+                        ((System.Windows.Threading.DispatcherTimer)s).Stop();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine($"刷新后延迟强制刷新柱状图出错: {ex.Message}");
+                    }
+                };
+                timer.Start();
             }
             catch (Exception ex)
             {
@@ -778,8 +935,7 @@ namespace 爱普生墨盒管理系统.Views
                 Console.WriteLine("图表控件加载完成");
                 
                 // 此事件已在UI线程中，可以安全地操作UI元素
-                var chart = sender as LiveCharts.Wpf.CartesianChart;
-                if (chart != null && chart.AxisX != null && chart.AxisX.Count > 0)
+                if (sender is LiveCharts.Wpf.CartesianChart chart && chart.AxisX != null && chart.AxisX.Count > 0)
                 {
                     // 设置X轴的标签旋转角度 如果显示不全，可以调整角度 比如设置为45度
                     chart.AxisX[0].LabelsRotation = 0;
@@ -832,7 +988,6 @@ namespace 爱普生墨盒管理系统.Views
         /// <summary>
         /// 检查数据库是否已初始化并确保颜色表有数据
         /// </summary>
-        [SuppressMessage("CodeQuality", "IDE0051:未使用的私有成员", Justification = "保留供将来使用")]
         private bool CheckDatabaseInitialized()
         {
             try

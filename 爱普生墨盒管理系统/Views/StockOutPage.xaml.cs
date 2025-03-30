@@ -362,6 +362,14 @@ namespace 爱普生墨盒管理系统.Views
                     LoadRecentRecords();
                     // 重新加载操作人员列表，确保新添加的操作人员在列表中
                     LoadOperators();
+                    
+                    // 刷新仪表盘数据
+                    var mainWindow = Window.GetWindow(this) as MainWindow;
+                    if (mainWindow != null)
+                    {
+                        mainWindow.RefreshDashboardIfVisible();
+                        Console.WriteLine("已请求刷新仪表盘数据");
+                    }
                 }
                 else
                 {

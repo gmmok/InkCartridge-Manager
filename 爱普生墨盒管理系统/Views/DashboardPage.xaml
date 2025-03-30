@@ -162,7 +162,7 @@
                 <TextBlock x:Name="txtLowStockHint" Grid.Row="1" Text="没有库存不足的墨盒" 
                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
 
-                <ListView x:Name="lvLowStock" Grid.Row="1">
+                <ListView x:Name="lvLowStock" Grid.Row="1" Visibility="Visible">
                     <ListView.View>
                         <GridView>
                             <GridViewColumn Header="ID" Width="50">

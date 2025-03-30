@@ -170,9 +170,37 @@ namespace 爱普生墨盒管理系统
         {
             try
             {
+                // 记录当前页面类型
+                var currentPageType = MainFrame.Content?.GetType();
+                
+                // 导航到仪表盘页面
                 MainFrame.Navigate(new Uri("/Views/DashboardPage.xaml", UriKind.Relative));
                 txtStatus.Text = "系统概览";
                 SetSelectedNavButton(NavBtnDashboard);
+                
+                // 如果页面类型没有变化（已经在仪表盘页面），强制刷新
+                if (currentPageType == typeof(DashboardPage) && MainFrame.Content is DashboardPage dashboard)
+                {
+                    Console.WriteLine("检测到重复导航到仪表盘页面，强制刷新");
+                    // 使用短延迟确保页面加载完成
+                    System.Windows.Threading.DispatcherTimer timer = new System.Windows.Threading.DispatcherTimer
+                    {
+                        Interval = TimeSpan.FromMilliseconds(300)
+                    };
+                    timer.Tick += (s, args) => 
+                    {
+                        try
+                        {
+                            dashboard.Refresh();
+                            ((System.Windows.Threading.DispatcherTimer)s).Stop();
+                        }
+                        catch (Exception timerEx)
+                        {
+                            Console.WriteLine($"延迟刷新仪表盘出错: {timerEx.Message}");
+                        }
+                    };
+                    timer.Start();
+                }
             }
             catch (Exception ex)
             {
@@ -265,6 +293,69 @@ namespace 爱普生墨盒管理系统
         }
 
         /// <summary>
+        /// 如果仪表盘页面可见（已加载到内存）则刷新它
+        /// </summary>
+        public void RefreshDashboardIfVisible()
+        {
+            try
+            {
+                Console.WriteLine("开始检查是否需要刷新仪表盘...");
+                
+                // 检查当前页面是否是仪表盘页面
+                if (MainFrame.Content is DashboardPage currentDashboard)
+                {
+                    Console.WriteLine("当前页面是仪表盘，直接刷新数据并重绘柱状图");
+                    // 在UI线程中延迟执行，确保刷新操作在UI更新后进行
+                    Dispatcher.BeginInvoke(new Action(() => 
+                    {
+                        try
+                        {
+                            // 先加载数据
+                            currentDashboard.LoadDashboardData();
+                            
+                            // 延迟执行强制刷新
+                            System.Windows.Threading.DispatcherTimer timer = new System.Windows.Threading.DispatcherTimer
+                            {
+                                Interval = TimeSpan.FromMilliseconds(500)
+                            };
+                            timer.Tick += (s, args) =>
+                            {
+                                try 
+                                {
+                                    currentDashboard.ForceRefreshColumnChart();
+                                    ((System.Windows.Threading.DispatcherTimer)s).Stop();
+                                }
+                                catch (Exception ex)
+                                {
+                                    Console.WriteLine($"强制刷新柱状图出错: {ex.Message}");
+                                }
+                            };
+                            timer.Start();
+                        }
+                        catch (Exception ex)
+                        {
+                            Console.WriteLine($"UI线程刷新仪表盘出错: {ex.Message}");
+                        }
+                    }), System.Windows.Threading.DispatcherPriority.Background);
+                }
+                else
+                {
+                    // 如果当前页面不是仪表盘，预先创建一个仪表盘实例并刷新其数据
+                    Console.WriteLine("当前不是仪表盘页面，创建临时仪表盘实例刷新数据");
+                    
+                    // 使用现有的延迟刷新方法，传递immediate=true以便立即执行
+                    RefreshDashboardWithDelay(delaySeconds: 0, immediate: true);
+                }
+                
+                Console.WriteLine("仪表盘刷新检查完成");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"检查并刷新仪表盘时出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
         /// 延迟刷新仪表盘数据
         /// </summary>
         private void RefreshDashboardWithDelay(int delaySeconds = 0, bool immediate = false)
@@ -278,15 +369,36 @@ namespace 爱普生墨盒管理系统
                     {
                         Console.WriteLine("立即刷新仪表盘数据");
                         dashboardPage.LoadDashboardData();
+                        
+                        // 添加延迟强制刷新柱状图的逻辑
+                        System.Windows.Threading.DispatcherTimer timer = new System.Windows.Threading.DispatcherTimer
+                        {
+                            Interval = TimeSpan.FromMilliseconds(500)
+                        };
+                        timer.Tick += (s, args) =>
+                        {
+                            try 
+                            {
+                                dashboardPage.ForceRefreshColumnChart();
+                                ((System.Windows.Threading.DispatcherTimer)s).Stop();
+                            }
+                            catch (Exception ex)
+                            {
+                                Console.WriteLine($"立即刷新后强制刷新柱状图出错: {ex.Message}");
+                            }
+                        };
+                        timer.Start();
                     }
                 }), System.Windows.Threading.DispatcherPriority.Background);
                 return;
             }
             
             // 否则使用定时器延迟刷新
-            System.Windows.Threading.DispatcherTimer timer = new System.Windows.Threading.DispatcherTimer();
-            timer.Interval = TimeSpan.FromSeconds(delaySeconds);
-            timer.Tick += (s, args) => 
+            var delayTimer = new System.Windows.Threading.DispatcherTimer
+            {
+                Interval = TimeSpan.FromSeconds(delaySeconds)
+            };
+            delayTimer.Tick += (s, args) => 
             {
                 try
                 {
@@ -294,6 +406,25 @@ namespace 爱普生墨盒管理系统
                     {
                         Console.WriteLine($"延迟{delaySeconds}秒后刷新仪表盘数据");
                         dashboardPage.LoadDashboardData();
+                        
+                        // 添加延迟强制刷新柱状图的逻辑
+                        System.Windows.Threading.DispatcherTimer colorTimer = new System.Windows.Threading.DispatcherTimer
+                        {
+                            Interval = TimeSpan.FromMilliseconds(500)
+                        };
+                        colorTimer.Tick += (colorSender, colorArgs) =>
+                        {
+                            try 
+                            {
+                                dashboardPage.ForceRefreshColumnChart();
+                                ((System.Windows.Threading.DispatcherTimer)colorSender).Stop();
+                            }
+                            catch (Exception colorEx)
+                            {
+                                Console.WriteLine($"延迟刷新后强制刷新柱状图出错: {colorEx.Message}");
+                            }
+                        };
+                        colorTimer.Start();
                     }
                     
                     // 只执行一次
@@ -304,7 +435,7 @@ namespace 爱普生墨盒管理系统
                     Console.WriteLine($"延迟刷新仪表盘出错: {ex.Message}");
                 }
             };
-            timer.Start();
+            delayTimer.Start();
         }
     }
 }

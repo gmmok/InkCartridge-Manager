@@ -113,10 +113,15 @@ namespace 爱普生墨盒管理系统
         {
             try
             {
-                Exception ex = e.ExceptionObject as Exception;
-                string errorMessage = ex != null
-                    ? $"发生未处理的异常: {ex.Message}\n\n{ex.StackTrace}"
-                    : "发生未知的未处理异常";
+                string errorMessage;
+                if (e.ExceptionObject is Exception ex)
+                {
+                    errorMessage = $"发生未处理的异常: {ex.Message}\n\n{ex.StackTrace}";
+                }
+                else
+                {
+                    errorMessage = "发生未知的未处理异常";
+                }
 
                 System.Diagnostics.Debug.WriteLine(errorMessage);
                 MessageBox.Show(errorMessage, "应用程序错误", MessageBoxButton.OK, MessageBoxImage.Error);

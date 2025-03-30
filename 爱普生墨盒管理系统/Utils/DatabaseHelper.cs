@@ -878,8 +878,11 @@ namespace 爱普生墨盒管理系统.Utils
         /// <returns>库存不足的墨盒列表</returns>
         public static List<Cartridge> GetLowStockCartridges()
         {
+            Console.WriteLine("开始获取库存不足墨盒列表...");
+            
             if (!_isSQLiteAvailable)
             {
+                Console.WriteLine("SQLite库不可用，无法获取库存不足墨盒数据");
                 MessageBox.Show("SQLite库不可用，无法获取库存不足墨盒数据。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                 return new List<Cartridge>();
             }
@@ -888,17 +891,23 @@ namespace 爱普生墨盒管理系统.Utils
             
             try
             {
+                Console.WriteLine("尝试连接数据库获取库存不足墨盒数据...");
+                
                 using (var connection = new SQLiteConnection(ConnectionString))
                 {
                     connection.Open();
                     string sql = "SELECT * FROM Cartridges WHERE CurrentStock < MinimumStock ORDER BY Color, Model;";
+                    Console.WriteLine($"执行SQL查询: {sql}");
+                    
                     using (var command = new SQLiteCommand(sql, connection))
                     {
                         using (var reader = command.ExecuteReader())
                         {
+                            int count = 0;
                             while (reader.Read())
                             {
-                                cartridges.Add(new Cartridge
+                                count++;
+                                var cartridge = new Cartridge
                                 {
                                     Id = Convert.ToInt32(reader["Id"]),
                                     Color = reader["Color"].ToString(),
@@ -908,7 +917,114 @@ namespace 爱普生墨盒管理系统.Utils
                                     MinimumStock = Convert.ToInt32(reader["MinimumStock"]),
                                     Notes = reader["Notes"].ToString(),
                                     UpdateTime = Convert.ToDateTime(reader["UpdateTime"])
-                                });
+                                };
+                                
+                                Console.WriteLine($"读取到库存不足墨盒: ID={cartridge.Id}, 颜色={cartridge.Color}, 型号={cartridge.Model}, 当前库存={cartridge.CurrentStock}, 最低库存={cartridge.MinimumStock}");
+                                cartridges.Add(cartridge);
+                            }
+                            Console.WriteLine($"总共读取到 {count} 条库存不足墨盒记录");
+                        }
+                    }
+                }
+                
+                Console.WriteLine($"成功获取 {cartridges.Count} 条库存不足墨盒数据");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"获取库存不足墨盒数据时出错: {ex.Message}\n{ex.StackTrace}");
+                MessageBox.Show($"获取库存不足墨盒数据时出错: {ex.Message}\n{ex.StackTrace}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+            }
+            
+            return cartridges;
+        }
+
+        /// <summary>
+        /// 获取墨盒表的状态信息，用于调试
+        /// </summary>
+        /// <returns>墨盒表的状态描述</returns>
+        public static string GetCartridgeTableStatus()
+        {
+            if (!_isSQLiteAvailable)
+            {
+                return "SQLite库不可用，无法获取墨盒表状态";
+            }
+            
+            StringBuilder sb = new StringBuilder();
+            
+            try
+            {
+                using (var connection = new SQLiteConnection(ConnectionString))
+                {
+                    connection.Open();
+                    
+                    // 获取表结构
+                    sb.AppendLine("墨盒表结构:");
+                    string pragmaSql = "PRAGMA table_info(Cartridges);";
+                    using (var command = new SQLiteCommand(pragmaSql, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                sb.AppendLine($"  列名: {reader["name"]}, 类型: {reader["type"]}, 非空: {reader["notnull"]}, 默认值: {reader["dflt_value"]}");
+                            }
+                        }
+                    }
+                    
+                    // 获取总记录数
+                    string countSql = "SELECT COUNT(*) FROM Cartridges;";
+                    using (var command = new SQLiteCommand(countSql, connection))
+                    {
+                        int totalCount = Convert.ToInt32(command.ExecuteScalar());
+                        sb.AppendLine($"墨盒表总记录数: {totalCount}");
+                    }
+                    
+                    // 获取库存不足的记录数
+                    string lowStockSql = "SELECT COUNT(*) FROM Cartridges WHERE CurrentStock < MinimumStock;";
+                    using (var command = new SQLiteCommand(lowStockSql, connection))
+                    {
+                        int lowStockCount = Convert.ToInt32(command.ExecuteScalar());
+                        sb.AppendLine($"库存不足墨盒数: {lowStockCount}");
+                    }
+                    
+                    // 检查各种特殊情况
+                    sb.AppendLine("特殊情况检查:");
+                    
+                    // 检查CurrentStock为负数的记录
+                    string negativeStockSql = "SELECT COUNT(*) FROM Cartridges WHERE CurrentStock < 0;";
+                    using (var command = new SQLiteCommand(negativeStockSql, connection))
+                    {
+                        int negativeStockCount = Convert.ToInt32(command.ExecuteScalar());
+                        sb.AppendLine($"  负库存记录数: {negativeStockCount}");
+                    }
+                    
+                    // 检查MinimumStock为负数的记录
+                    string negativeMinSql = "SELECT COUNT(*) FROM Cartridges WHERE MinimumStock < 0;";
+                    using (var command = new SQLiteCommand(negativeMinSql, connection))
+                    {
+                        int negativeMinCount = Convert.ToInt32(command.ExecuteScalar());
+                        sb.AppendLine($"  负最低库存记录数: {negativeMinCount}");
+                    }
+                    
+                    // 检查MinimumStock为0的记录
+                    string zeroMinSql = "SELECT COUNT(*) FROM Cartridges WHERE MinimumStock = 0;";
+                    using (var command = new SQLiteCommand(zeroMinSql, connection))
+                    {
+                        int zeroMinCount = Convert.ToInt32(command.ExecuteScalar());
+                        sb.AppendLine($"  最低库存为0的记录数: {zeroMinCount}");
+                    }
+                    
+                    // 获取前5条记录作为样本
+                    sb.AppendLine("墨盒表样本数据(前5条):");
+                    string sampleSql = "SELECT * FROM Cartridges LIMIT 5;";
+                    using (var command = new SQLiteCommand(sampleSql, connection))
+                    {
+                        using (var reader = command.ExecuteReader())
+                        {
+                            while (reader.Read())
+                            {
+                                sb.AppendLine($"  ID: {reader["Id"]}, 颜色: {reader["Color"]}, 型号: {reader["Model"]}, " +
+                                            $"当前库存: {reader["CurrentStock"]}, 最低库存: {reader["MinimumStock"]}");
                             }
                         }
                     }
@@ -916,10 +1032,87 @@ namespace 爱普生墨盒管理系统.Utils
             }
             catch (Exception ex)
             {
-                MessageBox.Show($"获取库存不足墨盒数据时出错: {ex.Message}\n{ex.StackTrace}", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                sb.AppendLine($"获取墨盒表状态时出错: {ex.Message}");
             }
             
-            return cartridges;
+            return sb.ToString();
+        }
+        
+        /// <summary>
+        /// 检查并修复墨盒表数据，确保库存不足警告正常工作
+        /// </summary>
+        /// <returns>修复结果</returns>
+        public static string CheckAndFixCartridgeTable()
+        {
+            if (!_isSQLiteAvailable)
+            {
+                return "SQLite库不可用，无法执行修复";
+            }
+            
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("开始检查并修复墨盒表数据...");
+            
+            try
+            {
+                using (var connection = new SQLiteConnection(ConnectionString))
+                {
+                    connection.Open();
+                    
+                    using (var transaction = connection.BeginTransaction())
+                    {
+                        try
+                        {
+                            // 1. 修复负库存值
+                            string fixNegativeStockSql = "UPDATE Cartridges SET CurrentStock = 0 WHERE CurrentStock < 0;";
+                            using (var command = new SQLiteCommand(fixNegativeStockSql, connection, transaction))
+                            {
+                                int affected = command.ExecuteNonQuery();
+                                sb.AppendLine($"修复负库存值: {affected}条记录");
+                            }
+                            
+                            // 2. 修复负最低库存值
+                            string fixNegativeMinSql = "UPDATE Cartridges SET MinimumStock = 1 WHERE MinimumStock < 0;";
+                            using (var command = new SQLiteCommand(fixNegativeMinSql, connection, transaction))
+                            {
+                                int affected = command.ExecuteNonQuery();
+                                sb.AppendLine($"修复负最低库存值: {affected}条记录");
+                            }
+                            
+                            // 3. 将最低库存为0的记录设置为1，确保库存不足警告能够正常工作
+                            string fixZeroMinSql = "UPDATE Cartridges SET MinimumStock = 1 WHERE MinimumStock = 0;";
+                            using (var command = new SQLiteCommand(fixZeroMinSql, connection, transaction))
+                            {
+                                int affected = command.ExecuteNonQuery();
+                                sb.AppendLine($"修复最低库存为0的记录: {affected}条记录");
+                            }
+                            
+                            // 提交事务
+                            transaction.Commit();
+                            sb.AppendLine("修复完成，事务已提交");
+                        }
+                        catch (Exception ex)
+                        {
+                            transaction.Rollback();
+                            sb.AppendLine($"修复过程中出错，事务已回滚: {ex.Message}");
+                        }
+                    }
+                    
+                    // 验证修复结果
+                    sb.AppendLine("验证修复结果:");
+                    string verifyLowStockSql = "SELECT COUNT(*) FROM Cartridges WHERE CurrentStock < MinimumStock;";
+                    using (var command = new SQLiteCommand(verifyLowStockSql, connection))
+                    {
+                        int lowStockCount = Convert.ToInt32(command.ExecuteScalar());
+                        sb.AppendLine($"修复后库存不足墨盒数: {lowStockCount}");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                sb.AppendLine($"执行修复时出错: {ex.Message}");
+            }
+            
+            return sb.ToString();
         }
 
         /// <summary>

@@ -847,6 +847,14 @@ namespace 爱普生墨盒管理系统.Views
                                 // 用户可以继续编辑或点击"关闭"按钮关闭窗口
                             }
                         }
+                        
+                        // 刷新仪表盘数据
+                        var mainWindow = Window.GetWindow(this) as MainWindow;
+                        if (mainWindow != null)
+                        {
+                            mainWindow.RefreshDashboardIfVisible();
+                            Console.WriteLine("已请求刷新仪表盘数据");
+                        }
                     }
                 }
                 else
