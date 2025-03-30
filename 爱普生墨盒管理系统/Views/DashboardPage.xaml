@@ -74,7 +74,7 @@
             <Grid Margin="10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
-                    <RowDefinition Height="260"/>
+                    <RowDefinition Height="320"/>
                     <RowDefinition Height="Auto"/>
                 </Grid.RowDefinitions>
 
@@ -102,20 +102,21 @@
                     x:Name="chartColorStats" 
                     Series="{Binding Series}" 
                     LegendLocation="None"
-                    MinHeight="260"
-                    Margin="5"
                     DisableAnimations="False"
                     Loaded="ChartColorStats_Loaded"
                     DataClick="ChartColorStats_DataClick">
+                    <!--Title="墨盒颜色"  X轴标签标题-->
                     <lvc:CartesianChart.AxisX>
                         <lvc:Axis 
-                            Title="墨盒颜色" 
                             Labels="{Binding Labels}"
-                            LabelsRotation="60"
+                            LabelsRotation="0"
                             Foreground="Black"
                             MinRange="0"
                             MaxRange="{Binding Labels.Count}"
-                            FontSize="11"
+                            FontSize="12"
+                            Position="LeftBottom"
+                            ShowLabels="True"
+                            Unit="1"
                             Separator="{x:Static lvc:DefaultAxes.CleanSeparator}">
                             <lvc:Axis.LabelFormatter>
                                 <Binding Path="LabelFormatter"/>

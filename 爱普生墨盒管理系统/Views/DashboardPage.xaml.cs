@@ -87,8 +87,26 @@ namespace 爱普生墨盒管理系统.Views
                         return string.Empty;
                     
                     string label = Labels[(int)index];
-                    return string.IsNullOrEmpty(label) ? $"颜色 {index+1}" : label;
+                    if (string.IsNullOrEmpty(label))
+                        return $"颜色 {index+1}";
+                    
+                    // 由于标签已经旋转90度，不需要再换行处理
+                    return label;
                 };
+            }
+
+            // 辅助方法：按指定长度分割字符串
+            private List<string> SplitString(string input, int chunkSize)
+            {
+                var result = new List<string>();
+                for (int i = 0; i < input.Length; i += chunkSize)
+                {
+                    if (i + chunkSize <= input.Length)
+                        result.Add(input.Substring(i, chunkSize));
+                    else
+                        result.Add(input.Substring(i));
+                }
+                return result;
             }
 
             // 修改ClearData方法以包含对Series的更新通知
@@ -287,8 +305,8 @@ namespace 爱普生墨盒管理系统.Views
                 // 获取所有墨盒数据
                 var allCartridges = DatabaseHelper.GetAllCartridges() ?? new List<Cartridge>();
                 
-                // 计算统计数据
-                int totalCartridgeTypes = allCartridges.Select(c => c.Color).Distinct().Count();
+                // 直接从数据库CartridgeColors表获取墨盒类型数量
+                int totalCartridgeTypes = DatabaseHelper.GetAllCartridgeColors().Count;
                 int totalStock = allCartridges.Sum(c => c.CurrentStock);
                 int lowStockCount = allCartridges.Count(c => c.CurrentStock < c.MinimumStock);
                 
@@ -401,7 +419,9 @@ namespace 爱普生墨盒管理系统.Views
                             DataLabels = true,
                             LabelPoint = point => point.Y.ToString("N0"),
                             Stroke = Brushes.DarkGray,
-                            StrokeThickness = 1
+                            StrokeThickness = 1,
+                            MaxColumnWidth = 50,  // 限制柱子宽度
+                            ColumnPadding = 8     // 增加柱子间距
                         };
                         
                         // 添加所有值

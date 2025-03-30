@@ -1,7 +1,7 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
-VisualStudioVersion = 17.12.35527.113 d17.12
+VisualStudioVersion = 17.12.35527.113
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "爱普生墨盒管理系统", "爱普生墨盒管理系统\爱普生墨盒管理系统.csproj", "{0753D9E6-DAE2-4328-9F3D-FEBE2E59932C}"
 EndProject
