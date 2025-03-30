@@ -4,6 +4,9 @@ using System.Linq;
 using System.Windows;
 using System.Windows.Controls;
 using System.Windows.Media;
+using System.Windows.Shapes; // Rectangle, Path等形状类
+using System.Windows.Media.Animation;
+using System.Windows.Input;
 using LiveCharts;
 using LiveCharts.Wpf;
 using LiveCharts.Configurations;
@@ -131,6 +134,11 @@ namespace 爱普生墨盒管理系统.Views
         private bool _isRefreshing = false;
         private DateTime _lastRefreshTime = DateTime.MinValue;
         private readonly TimeSpan _minRefreshInterval = TimeSpan.FromSeconds(1);
+
+        // 添加字段保存定时器和参数
+        private System.Windows.Threading.DispatcherTimer _colorApplyTimer;
+        private List<string> _pendingLabels;
+        private Dictionary<string, string> _pendingColorCodes;
 
         public DashboardPage()
         {
@@ -385,13 +393,13 @@ namespace 爱普生墨盒管理系统.Views
                 
                 // 准备颜色数据
                 var stockData = new List<KeyValuePair<string, int>>();
-                var brushes = new Dictionary<string, Brush>();
+                var colorCodes = new Dictionary<string, string>(); // 存储颜色代码而不是Brush对象
                 
                 foreach (var color in allColors)
                 {
                     int stockCount = colorStockCounts.ContainsKey(color.Name) ? colorStockCounts[color.Name] : 0;
                     stockData.Add(new KeyValuePair<string, int>(color.Name, stockCount));
-                    brushes[color.Name] = color.GetBrush();
+                    colorCodes[color.Name] = color.ColorCode; // 存储颜色代码字符串
                 }
                 
                 // 将所有UI操作放在UI线程中执行
@@ -402,17 +410,10 @@ namespace 爱普生墨盒管理系统.Views
                         // 设置标签和颜色
                         _chartViewModel.Labels = labels;
                         
-                        // 更新颜色映射
-                        foreach (var pair in brushes)
-                        {
-                            _chartViewModel.LabelColors[pair.Key] = pair.Value;
-                        }
-                        
                         // 创建新的SeriesCollection
                         var newSeries = new SeriesCollection();
                         
-                        // 创建具有多个值的单个ColumnSeries
-                        // 在 LoadColorStatisticsChart 方法中修改 ColumnSeries 的创建
+                        // 创建单个ColumnSeries
                         var columnSeries = new ColumnSeries
                         {
                             Title = "墨盒库存",
@@ -421,18 +422,35 @@ namespace 爱普生墨盒管理系统.Views
                             LabelPoint = point => point.Y.ToString("N0"),
                             Stroke = Brushes.DarkGray,
                             StrokeThickness = 1,
-                            MaxColumnWidth = 40,  // 减小柱子宽度
-                            ColumnPadding = 12    // 增加柱子间距
+                            MaxColumnWidth = 40,
+                            ColumnPadding = 12,
+                            // 设置悬停指示器样式
+                            Configuration = new CartesianMapper<double>()
+                                .X((value, index) => index)
+                                .Y(value => value)
+                                .Fill((value, index) => {
+                                    // 获取对应索引的颜色
+                                    if (index < labels.Count) {
+                                        string colorName = labels[index];
+                                        string colorCode = colorCodes.ContainsKey(colorName) ? colorCodes[colorName] : "#CCCCCC";
+                                        try {
+                                            return new SolidColorBrush((Color)ColorConverter.ConvertFromString(colorCode));
+                                        } catch {
+                                            return Brushes.Gray;
+                                        }
+                                    }
+                                    return Brushes.DodgerBlue;
+                                })
                         };
-                        
-                        // 添加所有值
+
+                        // 为每个点添加值
                         foreach (var item in stockData)
                         {
                             double value = Convert.ToDouble(item.Value);
                             columnSeries.Values.Add(value);
                         }
                         
-                        // 添加到集合
+                        // 添加到系列集合
                         newSeries.Add(columnSeries);
                         
                         // 设置Series属性以触发绑定更新
@@ -446,6 +464,9 @@ namespace 爱普生墨盒管理系统.Views
                         chartColorStats.Update(true);
                         
                         Console.WriteLine("图表UI已在UI线程上更新完成");
+                        
+                        // 应用颜色设置（延迟执行）
+                        ApplyChartColorsWithDelay(labels, colorCodes);
                     }
                     catch (Exception ex)
                     {
@@ -458,6 +479,135 @@ namespace 爱普生墨盒管理系统.Views
             catch (Exception ex)
             {
                 Console.WriteLine($"加载颜色统计图表出错: {ex.Message}\n{ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// 在延迟后应用墨盒颜色到柱状图（确保图表完全渲染）
+        /// </summary>
+        private void ApplyChartColorsWithDelay(List<string> labels, Dictionary<string, string> colorCodes, int delayMs = 300)
+        {
+            try
+            {
+                // 确保在UI线程上执行
+                if (!Dispatcher.CheckAccess())
+                {
+                    Dispatcher.Invoke(() => ApplyChartColorsWithDelay(labels, colorCodes, delayMs));
+                    return;
+                }
+
+                // 停止之前可能存在的计时器
+                if (_colorApplyTimer != null)
+                {
+                    _colorApplyTimer.Stop();
+                    _colorApplyTimer.Tick -= ColorApplyTimer_Tick;
+                }
+
+                // 保存当前的参数，供定时器回调使用
+                _pendingLabels = new List<string>(labels);
+                _pendingColorCodes = new Dictionary<string, string>(colorCodes);
+
+                // 创建新的定时器
+                _colorApplyTimer = new System.Windows.Threading.DispatcherTimer
+                {
+                    Interval = TimeSpan.FromMilliseconds(delayMs)
+                };
+
+                // 设置定时器回调
+                _colorApplyTimer.Tick += ColorApplyTimer_Tick;
+                _colorApplyTimer.Start();
+
+                Console.WriteLine($"已安排在{delayMs}毫秒后应用墨盒颜色");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"安排应用墨盒颜色时出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 颜色应用定时器回调
+        /// </summary>
+        private void ColorApplyTimer_Tick(object sender, EventArgs e)
+        {
+            try
+            {
+                // 停止计时器
+                ((System.Windows.Threading.DispatcherTimer)sender).Stop();
+
+                // 应用颜色
+                ApplyChartColors(_pendingLabels, _pendingColorCodes);
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"颜色应用定时器回调出错: {ex.Message}\n{ex.StackTrace}");
+            }
+        }
+
+        /// <summary>
+        /// 应用墨盒颜色到柱状图
+        /// </summary>
+        private void ApplyChartColors(List<string> labels, Dictionary<string, string> colorCodes)
+        {
+            try
+            {
+                // 检查图表是否可用
+                var chart = chartColorStats;
+                if (chart == null)
+                {
+                    Console.WriteLine("找不到图表控件");
+                    return;
+                }
+
+                // 使用VisualTreeHelper查找所有Rectangle元素
+                var rectangles = new List<Rectangle>();
+                FindRectangles(chart, rectangles);
+
+                // 过滤出柱子（一般来说是较大的矩形）
+                var columns = rectangles
+                    .Where(r => r.Width > 5 && r.Height > 5)
+                    .OrderBy(r => Canvas.GetLeft(r))
+                    .ToList();
+
+                // 如果找到的矩形数量与颜色数量不匹配，记录警告
+                if (columns.Count != labels.Count)
+                {
+                    Console.WriteLine($"警告：找到 {columns.Count} 个柱子，但有 {labels.Count} 种颜色");
+                }
+
+                // 为每个找到的柱子设置对应的颜色
+                for (int i = 0; i < columns.Count && i < labels.Count; i++)
+                {
+                    string colorName = labels[i];
+                    string colorCode = colorCodes.ContainsKey(colorName) ? colorCodes[colorName] : "#CCCCCC";
+
+                    try
+                    {
+                        // 在UI线程中创建和应用Brush
+                        Brush brush = null;
+                        try
+                        {
+                            brush = (Brush)new BrushConverter().ConvertFromString(colorCode);
+                        }
+                        catch
+                        {
+                            brush = Brushes.Gray; // 颜色转换失败时的默认值
+                        }
+
+                        // 设置柱子的背景色
+                        columns[i].Fill = brush;
+                    }
+                    catch (Exception colEx)
+                    {
+                        Console.WriteLine($"设置柱子颜色时出错: {colEx.Message}");
+                    }
+                }
+
+                Console.WriteLine($"已为 {Math.Min(columns.Count, labels.Count)} 个柱子设置颜色");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"应用墨盒颜色到柱状图时出错: {ex.Message}\n{ex.StackTrace}");
             }
         }
 
@@ -643,6 +793,13 @@ namespace 爱普生墨盒管理系统.Views
                     
                     // 强制更新图表
                     chart.Update(true);
+                    
+                    // 如果有待应用的颜色，尝试再次应用
+                    if (_pendingLabels != null && _pendingLabels.Count > 0 && _pendingColorCodes != null)
+                    {
+                        Console.WriteLine("图表加载完成，尝试应用颜色");
+                        ApplyChartColorsWithDelay(_pendingLabels, _pendingColorCodes, 100); // 使用较短的延迟
+                    }
                 }
             }
             catch (Exception ex)
@@ -697,6 +854,107 @@ namespace 爱普生墨盒管理系统.Views
                 Console.WriteLine($"检查数据库初始化状态出错: {ex.Message}");
                 return false;
             }
+        }
+
+        /// <summary>
+        /// 递归查找可视化树中的所有Rectangle元素
+        /// </summary>
+        private void FindRectangles(DependencyObject parent, List<Rectangle> rectangles)
+        {
+            try
+            {
+                // 检查当前元素是否为Rectangle
+                if (parent is Rectangle rectangle)
+                {
+                    rectangles.Add(rectangle);
+                }
+                
+                // 获取子元素数量
+                int childCount = VisualTreeHelper.GetChildrenCount(parent);
+                
+                // 递归处理每个子元素
+                for (int i = 0; i < childCount; i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+                    if (child != null)
+                    {
+                        FindRectangles(child, rectangles);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"查找Rectangle元素时出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 递归查找可视化树中的所有Path元素
+        /// </summary>
+        private void FindPaths(DependencyObject parent, List<Path> paths)
+        {
+            try
+            {
+                // 检查当前元素是否为Path
+                if (parent is Path path)
+                {
+                    paths.Add(path);
+                }
+                
+                // 获取子元素数量
+                int childCount = VisualTreeHelper.GetChildrenCount(parent);
+                
+                // 递归处理每个子元素
+                for (int i = 0; i < childCount; i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+                    if (child != null)
+                    {
+                        FindPaths(child, paths);
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"查找Path元素时出错: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// 查找可视化树中的所有子元素
+        /// </summary>
+        private T FindVisualChild<T>(DependencyObject parent) where T : DependencyObject
+        {
+            try
+            {
+                // 检查当前元素是否为T类型
+                if (parent is T t)
+                {
+                    return t;
+                }
+                
+                // 获取子元素数量
+                int childCount = VisualTreeHelper.GetChildrenCount(parent);
+                
+                // 递归处理每个子元素
+                for (int i = 0; i < childCount; i++)
+                {
+                    DependencyObject child = VisualTreeHelper.GetChild(parent, i);
+                    if (child != null)
+                    {
+                        T result = FindVisualChild<T>(child);
+                        if (result != null)
+                        {
+                            return result;
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"查找子元素时出错: {ex.Message}");
+            }
+            return null;
         }
     }
 }
