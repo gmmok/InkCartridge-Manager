@@ -154,7 +154,7 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="库存不足墨盒" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                <TextBlock Grid.Row="0" Text="库存不足墨盒(这里预警的某个型号使用完了，不是总墨盒，总墨盒看柱状图)" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
                 <TextBlock x:Name="tbNoDataHint" Grid.Row="1" Text="暂无墨盒数据，请先添加墨盒。" 
                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
