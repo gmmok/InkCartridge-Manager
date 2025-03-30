@@ -113,7 +113,7 @@
                             Foreground="Black"
                             MinRange="0"
                             MaxRange="{Binding Labels.Count}"
-                            FontSize="12"
+                            FontSize="18"
                             Position="LeftBottom"
                             ShowLabels="True"
                             Unit="1"

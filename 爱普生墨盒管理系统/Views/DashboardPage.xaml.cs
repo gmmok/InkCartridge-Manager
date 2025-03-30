@@ -412,6 +412,7 @@ namespace 爱普生墨盒管理系统.Views
                         var newSeries = new SeriesCollection();
                         
                         // 创建具有多个值的单个ColumnSeries
+                        // 在 LoadColorStatisticsChart 方法中修改 ColumnSeries 的创建
                         var columnSeries = new ColumnSeries
                         {
                             Title = "墨盒库存",
@@ -420,8 +421,8 @@ namespace 爱普生墨盒管理系统.Views
                             LabelPoint = point => point.Y.ToString("N0"),
                             Stroke = Brushes.DarkGray,
                             StrokeThickness = 1,
-                            MaxColumnWidth = 50,  // 限制柱子宽度
-                            ColumnPadding = 8     // 增加柱子间距
+                            MaxColumnWidth = 40,  // 减小柱子宽度
+                            ColumnPadding = 12    // 增加柱子间距
                         };
                         
                         // 添加所有值
@@ -628,48 +629,20 @@ namespace 爱普生墨盒管理系统.Views
                 
                 // 此事件已在UI线程中，可以安全地操作UI元素
                 var chart = sender as LiveCharts.Wpf.CartesianChart;
-                if (chart != null)
+                if (chart != null && chart.AxisX != null && chart.AxisX.Count > 0)
                 {
-                    if (chart.DataContext == null)
-                    {
-                        Console.WriteLine("重新设置图表DataContext");
-                        chart.DataContext = _chartViewModel;
-                    }
+                    // 设置X轴的标签旋转角度 如果显示不全，可以调整角度 比如设置为45度
+                    chart.AxisX[0].LabelsRotation = 0;
                     
-                    // 图表加载完成后，如果已有数据但图表为空，手动触发更新
-                    if (_chartViewModel.Series != null && 
-                        _chartViewModel.Series.Count > 0 &&
-                        (chart.Series == null || chart.Series.Count == 0))
+                    // 设置分隔符步长为1，确保每个标签都显示
+                    chart.AxisX[0].Separator = new LvcSeparator
                     {
-                        Console.WriteLine("图表加载完成后发现数据绑定问题，手动刷新");
-                        
-                        // 强制更新图表
-                        chart.Update(true);
-                        
-                        // 如果更新后仍然没有显示，尝试重新设置Series
-                        if (chart.Series == null || chart.Series.Count == 0)
-                        {
-                            Console.WriteLine("尝试重新设置Series触发绑定更新");
-                            
-                            // 保存当前Series引用
-                            var currentSeries = _chartViewModel.Series;
-                            
-                            // 重新设置Series以触发绑定更新
-                            _chartViewModel.Series = new SeriesCollection();
-                            
-                            // 安全地重新添加原有系列
-                            if (currentSeries != null && currentSeries.Count > 0)
-                            {
-                                foreach (var series in currentSeries)
-                                {
-                                    _chartViewModel.Series.Add(series);
-                                }
-                            }
-                            
-                            // 再次强制更新
-                            chart.Update(true);
-                        }
-                    }
+                        Step = 1,
+                        IsEnabled = true
+                    };
+                    
+                    // 强制更新图表
+                    chart.Update(true);
                 }
             }
             catch (Exception ex)
@@ -690,7 +663,7 @@ namespace 爱普生墨盒管理系统.Views
                 if (index >= 0 && index < _chartViewModel.Labels.Count)
                 {
                     string colorName = _chartViewModel.Labels[index];
-                    MessageBox.Show($"您点击了 {colorName} 颜色，库存数量: {chartPoint.Y}", "墨盒颜色详情", MessageBoxButton.OK, MessageBoxImage.Information);
+                    MessageBox.Show($"{colorName} ，库存数量: {chartPoint.Y}", "墨盒颜色详情", MessageBoxButton.OK, MessageBoxImage.Information);
                 }
             }
             catch (Exception ex)
