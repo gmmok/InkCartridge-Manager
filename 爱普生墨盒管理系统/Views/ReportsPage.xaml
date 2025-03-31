@@ -73,7 +73,7 @@
                     
                     <DataGrid Grid.Row="1" x:Name="dgCartridgeUsage" AutoGenerateColumns="False" IsReadOnly="True">
                         <DataGrid.Columns>
-                            <DataGridTextColumn Header="墨盒ID" Binding="{Binding CartridgeId}" Width="60"/>
+                            <DataGridTextColumn Header="ID" Binding="{Binding CartridgeId}" Width="50"/>
                             <DataGridTextColumn Header="颜色" Binding="{Binding Color}" Width="120"/>
                             <DataGridTextColumn Header="型号" Binding="{Binding Model}" Width="120"/>
                             <DataGridTextColumn Header="入库总量" Binding="{Binding TotalIn}" Width="100"/>

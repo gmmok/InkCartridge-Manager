@@ -38,8 +38,8 @@
                 <ColumnDefinition Width="Auto"/>
             </Grid.ColumnDefinitions>
 
-            <Button x:Name="btnCancel" Grid.Column="1" Content="{Binding CancelButtonText}" Width="80" Margin="0,0,10,0" Click="btnCancel_Click"/>
-            <Button x:Name="btnConfirm" Grid.Column="2" Content="{Binding ConfirmButtonText}" Width="80" Click="btnConfirm_Click" IsDefault="True"/>
+            <Button x:Name="btnCancel" Grid.Column="1" Content="{Binding CancelButtonText}" Width="80" Margin="0,0,10,0" Click="BtnCancel_Click"/>
+            <Button x:Name="btnConfirm" Grid.Column="2" Content="{Binding ConfirmButtonText}" Width="80" Click="BtnConfirm_Click" IsDefault="True"/>
         </Grid>
     </Grid>
 </Window> 

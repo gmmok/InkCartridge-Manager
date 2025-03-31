@@ -25,7 +25,7 @@
             FontWeight="Bold" 
             Margin="10,0,0,10"
             HorizontalAlignment="Left">
-            墨盒管理<LineBreak/>说明：此页面是管理打印机所能使用的墨盒名称和型号，不是出入库。
+            墨盒管理<LineBreak/>说明：墨盒颜色名称(不同机型需修改初始化数据库，详见README.md)
         </TextBlock>
 
 

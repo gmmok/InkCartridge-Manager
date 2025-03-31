@@ -126,9 +126,12 @@ namespace 爱普生墨盒管理系统
                 System.Diagnostics.Debug.WriteLine(errorMessage);
                 MessageBox.Show(errorMessage, "应用程序错误", MessageBoxButton.OK, MessageBoxImage.Error);
             }
-            catch
+            catch (Exception msgEx)
             {
-                // 如果在显示错误信息时又出错，直接退出
+                // 如果在显示错误信息时又出错，记录并直接退出
+                System.Diagnostics.Debug.WriteLine($"显示错误信息时发生二次异常: {msgEx.Message}");
+                System.Diagnostics.Debug.WriteLine($"堆栈跟踪: {msgEx.StackTrace}");
+                // 这种情况下无法显示UI，只能记录日志
             }
             finally
             {
@@ -138,10 +141,13 @@ namespace 爱普生墨盒管理系统
                     try
                     {
                         // 可以在这里添加一些清理代码，例如保存用户数据
+                        System.Diagnostics.Debug.WriteLine("执行应用终止前的清理工作");
                     }
-                    catch
+                    catch (Exception cleanupEx)
                     {
-                        // 忽略清理过程中的错误
+                        // 记录清理过程中的错误但继续退出流程
+                        System.Diagnostics.Debug.WriteLine($"清理过程中发生错误: {cleanupEx.Message}");
+                        System.Diagnostics.Debug.WriteLine($"堆栈跟踪: {cleanupEx.StackTrace}");
                     }
                 }
             }
@@ -159,9 +165,11 @@ namespace 爱普生墨盒管理系统
                 // 标记异常为已处理，防止应用崩溃
                 e.Handled = true;
             }
-            catch
+            catch (Exception msgEx)
             {
-                // 如果在显示错误信息时又出错，让异常继续传播
+                // 如果在显示错误信息时又出错，记录并让异常继续传播
+                System.Diagnostics.Debug.WriteLine($"处理UI异常时发生二次异常: {msgEx.Message}");
+                System.Diagnostics.Debug.WriteLine($"堆栈跟踪: {msgEx.StackTrace}");
                 e.Handled = false;
             }
         }

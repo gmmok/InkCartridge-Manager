@@ -399,9 +399,11 @@ namespace 爱普生墨盒管理系统.Views
                         dgCartridges.ItemsSource = new List<dynamic>();
                     }
                 }
-                catch
+                catch (Exception innerEx)
                 {
-                    // 忽略进一步的异常
+                    // 记录进一步的异常，但不抛出以避免UI崩溃
+                    Console.WriteLine($"清空DataGrid时发生二次异常: {innerEx.Message}");
+                    Console.WriteLine($"堆栈跟踪: {innerEx.StackTrace}");
                 }
             }
         }
@@ -494,9 +496,11 @@ namespace 爱普生墨盒管理系统.Views
                             colorPreview.Background = Brushes.Transparent;
                         }
                     }
-                    catch
+                    catch (Exception colorEx)
                     {
                         // 如果颜色转换失败，使用透明色
+                        Console.WriteLine($"颜色转换失败，颜色代码: {selectedColor.ColorCode}, 错误: {colorEx.Message}");
+                        Console.WriteLine($"堆栈跟踪: {colorEx.StackTrace}");
                         colorPreview.Background = Brushes.Transparent;
                     }
                 }
@@ -718,63 +722,127 @@ namespace 爱普生墨盒管理系统.Views
                             allCartridges = new List<Cartridge>();
                         }
                         
-                        // 尝试添加墨盒
-                        Console.WriteLine($"尝试添加墨盒: 颜色={colorName}, 型号={modelName}");
-                        success = DatabaseHelper.AddCartridge(cartridge);
+                        // 检查是否已存在相同颜色和型号的墨盒
+                        var existingCartridge = allCartridges.FirstOrDefault(c => 
+                            string.Equals(c.Color, colorName, StringComparison.OrdinalIgnoreCase) && 
+                            string.Equals(c.Model, modelName, StringComparison.OrdinalIgnoreCase));
                         
-                        if (success)
+                        if (existingCartridge != null)
                         {
-                            // 查询新添加的墨盒（获取数据库分配的ID）
-                            try
+                            // 如果存在相同颜色和型号的墨盒，更新其数量
+                            Console.WriteLine($"找到已存在的墨盒: ID={existingCartridge.Id}, 颜色={colorName}, 型号={modelName}, 当前库存={existingCartridge.CurrentStock}");
+                            
+                            // 创建更新对象
+                            Cartridge updatedCartridge = new Cartridge
                             {
-                                Console.WriteLine("查询新添加的墨盒...");
-                                var newCartridges = DatabaseHelper.GetAllCartridges()
-                                    ?.Where(c => c != null && 
-                                             string.Equals(c.Color, colorName, StringComparison.OrdinalIgnoreCase) && 
-                                             string.Equals(c.Model, modelName, StringComparison.OrdinalIgnoreCase))
-                                    ?.OrderByDescending(c => c.Id)
-                                    ?.ToList() ?? new List<Cartridge>();
-
-                                if (newCartridges.Count > 0)
-                                {
-                                    // 获取新添加的墨盒
-                                    var newCartridge = newCartridges[0];
-                                    Console.WriteLine($"找到新添加的墨盒, ID: {newCartridge.Id}");
-                                    
-                                    // 直接添加到列表
-                                    allCartridges.Add(newCartridge);
-                                    
-                                    // 切换到编辑模式
-                                    isAddMode = false;
-                                    currentEditId = newCartridge.Id;
-                                    
-                                    // 更新UI
-                                    ApplyFilters();
-                                    
-                                    // 显示成功消息
-                                    MessageBox.Show("墨盒添加成功！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
-                                    Console.WriteLine($"墨盒添加成功，ID: {newCartridge.Id}");
-                                }
-                                else
-                                {
-                                    // 如果找不到新添加的墨盒，完全重新加载数据
-                                    Console.WriteLine("未找到新添加的墨盒，将重新加载所有数据");
-                                    MessageBox.Show("墨盒添加成功，正在刷新数据...", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
-                                    LoadCartridges();
-                                    ApplyFilters();
-                                }
-                            }
-                            catch (Exception queryEx)
+                                Id = existingCartridge.Id,
+                                Color = colorName,
+                                Model = modelName,
+                                Capacity = capacity,
+                                CurrentStock = existingCartridge.CurrentStock + currentStock, // 数量相加
+                                MinimumStock = minimumStock,
+                                Notes = txtNotes.Text?.Trim() ?? "",
+                                UpdateTime = DateTime.Now
+                            };
+                            
+                            // 更新墨盒
+                            success = DatabaseHelper.UpdateCartridge(updatedCartridge);
+                            
+                            if (success)
                             {
-                                Console.WriteLine($"查询新添加墨盒时出错: {queryEx.Message}");
-                                MessageBox.Show("墨盒已添加，但查询新墨盒时出错，将重新加载数据", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
-                                LoadCartridges();
+                                MessageBox.Show($"已存在相同颜色和型号的墨盒，数量已更新。\n新库存数量: {updatedCartridge.CurrentStock}", 
+                                    "更新成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                                
+                                // 更新内存中的对象
+                                int index = allCartridges.IndexOf(existingCartridge);
+                                if (index >= 0)
+                                {
+                                    allCartridges[index] = updatedCartridge;
+                                    Console.WriteLine($"已更新内存中索引为 {index} 的墨盒，新库存: {updatedCartridge.CurrentStock}");
+                                }
+                                
+                                // 保持添加模式，不要切换到编辑模式
+                                // isAddMode = false;
+                                // currentEditId = updatedCartridge.Id;
+                                
+                                // 刷新UI
                                 ApplyFilters();
+                                
+                                // 清空表单，让用户可以继续添加其他墨盒
+                                ClearDetailForm();
+                            }
+                            else
+                            {
+                                MessageBox.Show("更新墨盒数量失败，请检查数据后重试。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
                             }
                         }
                         else
                         {
-                            MessageBox.Show("添加墨盒失败，请检查数据后重试。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            // 如果不存在相同颜色和型号的墨盒，添加新墨盒
+                            Console.WriteLine($"尝试添加新墨盒: 颜色={colorName}, 型号={modelName}");
+                            success = DatabaseHelper.AddCartridge(cartridge);
+                            
+                            if (success)
+                            {
+                                // 查询新添加的墨盒（获取数据库分配的ID）
+                                try
+                                {
+                                    Console.WriteLine("查询新添加的墨盒...");
+                                    // 查询新添加的墨盒
+                                    var newCartridges = DatabaseHelper.GetAllCartridges()
+                                        ?.Where(c => c != null && 
+                                                 string.Equals(c.Color, colorName, StringComparison.OrdinalIgnoreCase) && 
+                                                 string.Equals(c.Model, modelName, StringComparison.OrdinalIgnoreCase))
+                                        ?.OrderByDescending(c => c.Id)
+                                        ?.ToList() ?? new List<Cartridge>();
+
+                                    if (newCartridges.Count > 0)
+                                    {
+                                        // 获取新添加的墨盒
+                                        var newCartridge = newCartridges[0];
+                                        Console.WriteLine($"找到新添加的墨盒, ID: {newCartridge.Id}");
+                                        
+                                        // 确保墨盒不会被重复添加到列表中
+                                        if (!allCartridges.Any(c => c.Id == newCartridge.Id))
+                                        {
+                                            // 添加到列表
+                                            allCartridges.Add(newCartridge);
+                                            Console.WriteLine($"新墨盒已添加到内存中，当前墨盒总数: {allCartridges.Count}");
+                                        }
+                                        
+                                        // 保持添加模式，让用户可以继续添加
+                                        // 不要切换到编辑模式，这样会导致UI替换而不是添加新行
+                                        // isAddMode = false;
+                                        // currentEditId = newCartridge.Id;
+                                        
+                                        // 更新UI显示所有墨盒
+                                        ApplyFilters();
+                                        
+                                        // 显示成功消息
+                                        MessageBox.Show("墨盒添加成功！", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                                        Console.WriteLine($"墨盒添加成功，ID: {newCartridge.Id}");
+                                    }
+                                    else
+                                    {
+                                        // 如果找不到新添加的墨盒，完全重新加载数据
+                                        Console.WriteLine("未找到新添加的墨盒，将重新加载所有数据");
+                                        MessageBox.Show("墨盒添加成功，正在刷新数据...", "成功", MessageBoxButton.OK, MessageBoxImage.Information);
+                                        LoadCartridges();
+                                        ApplyFilters();
+                                    }
+                                }
+                                catch (Exception queryEx)
+                                {
+                                    Console.WriteLine($"查询新添加墨盒时出错: {queryEx.Message}");
+                                    MessageBox.Show("墨盒已添加，但查询新墨盒时出错，将重新加载数据", "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
+                                    LoadCartridges();
+                                    ApplyFilters();
+                                }
+                            }
+                            else
+                            {
+                                MessageBox.Show("添加墨盒失败，请检查数据后重试。", "错误", MessageBoxButton.OK, MessageBoxImage.Error);
+                            }
                         }
                     }
                     else // 编辑模式
@@ -828,12 +896,12 @@ namespace 爱普生墨盒管理系统.Views
                     // 保存成功后不自动关闭窗口，让用户自己决定何时关闭
                     if (success)
                     {
-                        // 如果是添加模式，可以考虑清空表单以便添加下一个墨盒
+                        // 如果是添加模式，询问用户是否继续添加新墨盒
                         if (isAddMode)
                         {
                             // 询问用户是否继续添加新墨盒
-                            var result = MessageBox.Show("墨盒添加成功！是否继续添加新墨盒？", 
-                                "添加成功", MessageBoxButton.YesNo, MessageBoxImage.Question);
+                            var result = MessageBox.Show("墨盒操作成功！是否继续添加新墨盒？", 
+                                "操作成功", MessageBoxButton.YesNo, MessageBoxImage.Question);
                             
                             if (result == MessageBoxResult.Yes)
                             {
@@ -843,9 +911,14 @@ namespace 爱普生墨盒管理系统.Views
                             }
                             else
                             {
-                                // 不再添加新墨盒，但窗口保持打开状态
-                                // 用户可以继续编辑或点击"关闭"按钮关闭窗口
+                                // 不再添加新墨盒，关闭编辑区域
+                                gridDetails.Visibility = Visibility.Collapsed;
                             }
+                        }
+                        else  // 普通的编辑模式
+                        {
+                            // 编辑完成后默认关闭编辑区域
+                            gridDetails.Visibility = Visibility.Collapsed;
                         }
                         
                         // 刷新仪表盘数据

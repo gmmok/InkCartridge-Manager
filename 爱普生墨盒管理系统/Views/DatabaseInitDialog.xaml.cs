@@ -111,7 +111,7 @@ namespace 爱普生墨盒管理系统.Views
         /// <summary>
         /// 确认按钮点击事件
         /// </summary>
-        private void btnConfirm_Click(object sender, RoutedEventArgs e)
+        private void BtnConfirm_Click(object sender, RoutedEventArgs e)
         {
             IsConfirmed = true;
             DialogResult = true;
@@ -121,7 +121,7 @@ namespace 爱普生墨盒管理系统.Views
         /// <summary>
         /// 取消按钮点击事件
         /// </summary>
-        private void btnCancel_Click(object sender, RoutedEventArgs e)
+        private void BtnCancel_Click(object sender, RoutedEventArgs e)
         {
             IsConfirmed = false;
             DialogResult = false;

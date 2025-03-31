@@ -20,8 +20,16 @@ namespace 爱普生墨盒管理系统.Views
                     var cartridges = DatabaseHelper.GetAllCartridges();
                     return true;
                 }
-                catch
+                catch (Exception ex)
                 {
+                    // 记录详细的异常信息
+                    Console.WriteLine($"SQLite库不可用: {ex.Message}");
+                    Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
+                    if (ex.InnerException != null)
+                    {
+                        Console.WriteLine($"内部异常: {ex.InnerException.Message}");
+                        Console.WriteLine($"内部异常堆栈: {ex.InnerException.StackTrace}");
+                    }
                     return false;
                 }
             }
@@ -56,6 +64,17 @@ namespace 爱普生墨盒管理系统.Views
                 if (exception.InnerException != null)
                 {
                     fullMessage += $"\n{exception.InnerException.Message}";
+                }
+                
+                // 记录详细的异常堆栈信息到控制台，便于调试
+                Console.WriteLine($"错误: {message}");
+                Console.WriteLine($"异常: {exception.Message}");
+                Console.WriteLine($"堆栈跟踪: {exception.StackTrace}");
+                
+                if (exception.InnerException != null)
+                {
+                    Console.WriteLine($"内部异常: {exception.InnerException.Message}");
+                    Console.WriteLine($"内部异常堆栈: {exception.InnerException.StackTrace}");
                 }
             }
             

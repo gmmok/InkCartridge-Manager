@@ -91,7 +91,7 @@
             <DataGrid Grid.Row="1" x:Name="dgRecentRecords" AutoGenerateColumns="False" IsReadOnly="True">
                 <DataGrid.Columns>
                     <DataGridTextColumn Header="ID" Binding="{Binding Id}" Width="50"/>
-                    <DataGridTextColumn Header="墨盒" Binding="{Binding CartridgeInfo}" Width="210"/>
+                    <DataGridTextColumn Header="墨盒信息" Binding="{Binding CartridgeInfo}" Width="210"/>
                     <DataGridTextColumn Header="出库数量" Binding="{Binding Quantity}" Width="120"/>
                     <DataGridTextColumn Header="操作人员" Binding="{Binding Operator}" Width="120"/>
                     <DataGridTextColumn Header="相关项目" Binding="{Binding Project}" Width="120"/>

@@ -205,7 +205,7 @@ namespace 爱普生墨盒管理系统.Views
                     {
                         stockStatus = "无库存";
                     }
-                    else if (currentStock < minimumStock)
+                    else if (minimumStock > 0 && currentStock <= minimumStock)
                     {
                         stockStatus = "库存不足";
                     }

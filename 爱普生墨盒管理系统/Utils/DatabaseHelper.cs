@@ -56,7 +56,12 @@ namespace 爱普生墨盒管理系统.Utils
                         return (System.Windows.Media.SolidColorBrush)(new System.Windows.Media.BrushConverter().ConvertFrom(ColorCode));
                     }
                 }
-                catch { }
+                catch (Exception ex)
+                {
+                    // 记录颜色转换错误但继续使用默认值
+                    Console.WriteLine($"转换颜色代码'{ColorCode}'时出错: {ex.Message}");
+                    Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
+                }
 
                 // 默认颜色
                 return System.Windows.Media.Brushes.Gray;
@@ -95,9 +100,11 @@ namespace 爱普生墨盒管理系统.Utils
                 Type sqliteType = typeof(SQLiteConnection);
                 _isSQLiteAvailable = true;
             }
-            catch
+            catch (Exception ex)
             {
                 _isSQLiteAvailable = false;
+                Console.WriteLine($"加载SQLite库时出错: {ex.Message}");
+                Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
                 MessageBox.Show("未能加载SQLite库，系统将以受限模式运行。\n请确保已正确安装SQLite。", 
                     "警告", MessageBoxButton.OK, MessageBoxImage.Warning);
             }
@@ -278,9 +285,11 @@ namespace 爱普生墨盒管理系统.Utils
                 bool confirmed = 宽幅面打印机墨盒管理系统.Views.DatabaseInitDialogAlias.ShowInitDialog();
                 return confirmed ? MessageBoxResult.OK : MessageBoxResult.Cancel;
             }
-            catch
+            catch (Exception ex)
             {
                 // 如果自定义对话框加载失败，使用标准消息框作为备选
+                Console.WriteLine($"加载自定义初始化对话框失败: {ex.Message}");
+                Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
                 return MessageBox.Show(
                     宽幅面打印机墨盒管理系统.Utils.LocalizationHelperAlias.GetString("DB_INIT_MESSAGE"),
                     宽幅面打印机墨盒管理系统.Utils.LocalizationHelperAlias.GetString("DB_INIT_TITLE"),
@@ -896,7 +905,8 @@ namespace 爱普生墨盒管理系统.Utils
                 using (var connection = new SQLiteConnection(ConnectionString))
                 {
                     connection.Open();
-                    string sql = "SELECT * FROM Cartridges WHERE CurrentStock < MinimumStock ORDER BY Color, Model;";
+                    // 修改SQL查询，按照新的警戒线判定规则查询库存不足的墨盒
+                    string sql = "SELECT * FROM Cartridges WHERE CurrentStock <= 0 OR (MinimumStock > 0 AND CurrentStock <= MinimumStock) ORDER BY CurrentStock ASC, Color, Model;";
                     Console.WriteLine($"执行SQL查询: {sql}");
                     
                     using (var command = new SQLiteCommand(sql, connection))
@@ -919,15 +929,15 @@ namespace 爱普生墨盒管理系统.Utils
                                     UpdateTime = Convert.ToDateTime(reader["UpdateTime"])
                                 };
                                 
-                                Console.WriteLine($"读取到库存不足墨盒: ID={cartridge.Id}, 颜色={cartridge.Color}, 型号={cartridge.Model}, 当前库存={cartridge.CurrentStock}, 最低库存={cartridge.MinimumStock}");
+                                Console.WriteLine($"读取到库存不足/无库存墨盒: ID={cartridge.Id}, 颜色={cartridge.Color}, 型号={cartridge.Model}, 当前库存={cartridge.CurrentStock}, 最低库存={cartridge.MinimumStock}, 状态={(cartridge.CurrentStock <= 0 ? "无库存" : "库存不足")}");
                                 cartridges.Add(cartridge);
                             }
-                            Console.WriteLine($"总共读取到 {count} 条库存不足墨盒记录");
+                            Console.WriteLine($"总共读取到 {count} 条库存不足/无库存墨盒记录");
                         }
                     }
                 }
                 
-                Console.WriteLine($"成功获取 {cartridges.Count} 条库存不足墨盒数据");
+                Console.WriteLine($"成功获取 {cartridges.Count} 条库存不足/无库存墨盒数据");
             }
             catch (Exception ex)
             {
@@ -980,11 +990,26 @@ namespace 爱普生墨盒管理系统.Utils
                     }
                     
                     // 获取库存不足的记录数
-                    string lowStockSql = "SELECT COUNT(*) FROM Cartridges WHERE CurrentStock < MinimumStock;";
+                    string lowStockSql = "SELECT COUNT(*) FROM Cartridges WHERE CurrentStock <= 0 OR CurrentStock < MinimumStock;";
                     using (var command = new SQLiteCommand(lowStockSql, connection))
                     {
                         int lowStockCount = Convert.ToInt32(command.ExecuteScalar());
-                        sb.AppendLine($"库存不足墨盒数: {lowStockCount}");
+                        sb.AppendLine($"库存不足或无库存墨盒数: {lowStockCount}");
+                    }
+                    
+                    // 分别获取无库存和库存不足的记录数
+                    string zeroStockSql = "SELECT COUNT(*) FROM Cartridges WHERE CurrentStock <= 0;";
+                    using (var command = new SQLiteCommand(zeroStockSql, connection))
+                    {
+                        int zeroStockCount = Convert.ToInt32(command.ExecuteScalar());
+                        sb.AppendLine($"无库存墨盒数: {zeroStockCount}");
+                    }
+                    
+                    string belowMinSql = "SELECT COUNT(*) FROM Cartridges WHERE CurrentStock > 0 AND CurrentStock < MinimumStock;";
+                    using (var command = new SQLiteCommand(belowMinSql, connection))
+                    {
+                        int belowMinCount = Convert.ToInt32(command.ExecuteScalar());
+                        sb.AppendLine($"低于警戒线墨盒数: {belowMinCount}");
                     }
                     
                     // 检查各种特殊情况

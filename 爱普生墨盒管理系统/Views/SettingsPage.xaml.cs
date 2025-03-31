@@ -284,7 +284,13 @@ namespace 爱普生墨盒管理系统.Views
                                 connection.Close();
                             }
                         }
-                        catch { }
+                        catch (Exception connEx)
+                        {
+                            // 记录异常但继续执行，因为这只是一个测试连接
+                            Console.WriteLine($"测试数据库连接时出错: {connEx.Message}");
+                            Console.WriteLine($"堆栈跟踪: {connEx.StackTrace}");
+                            // 如果失败也继续尝试备份和恢复
+                        }
                         
                         // 备份当前数据库
                         string currentBackupPath = System.IO.Path.Combine(AppDomain.CurrentDomain.BaseDirectory, "Backups");

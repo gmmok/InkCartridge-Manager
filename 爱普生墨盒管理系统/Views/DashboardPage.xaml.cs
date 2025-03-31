@@ -383,7 +383,15 @@ namespace 爱普生墨盒管理系统.Views
                 // 直接从数据库CartridgeColors表获取墨盒类型数量
                 int totalCartridgeTypes = DatabaseHelper.GetAllCartridgeColors().Count;
                 int totalStock = allCartridges.Sum(c => c.CurrentStock);
-                int lowStockCount = allCartridges.Count(c => c.CurrentStock < c.MinimumStock);
+                
+                // 修改库存不足的计算逻辑，按照新的警戒线判定规则
+                int lowStockCount = allCartridges.Count(c => c.CurrentStock <= 0 || (c.MinimumStock > 0 && c.CurrentStock <= c.MinimumStock));
+                
+                // 单独计算无库存的墨盒数量，方便调试
+                int zeroStockCount = allCartridges.Count(c => c.CurrentStock <= 0);
+                int belowMinStockCount = allCartridges.Count(c => c.CurrentStock > 0 && c.MinimumStock > 0 && c.CurrentStock <= c.MinimumStock);
+                
+                Console.WriteLine($"墨盒库存统计详情: 无库存={zeroStockCount}, 低于警戒线={belowMinStockCount}, 总计库存不足={lowStockCount}");
                 
                 // 更新UI
                 Dispatcher.Invoke(() =>
@@ -396,7 +404,7 @@ namespace 爱普生墨盒管理系统.Views
                     tbNoDataHint.Visibility = allCartridges.Count > 0 ? Visibility.Collapsed : Visibility.Visible;
                 });
                 
-                Console.WriteLine($"墨盒统计数据加载完成: 墨盒类型={totalCartridgeTypes}, 总库存={totalStock}, 库存不足={lowStockCount}");
+                Console.WriteLine($"墨盒统计数据加载完成: 墨盒类型={totalCartridgeTypes}, 总库存={totalStock}, 库存不足或无库存={lowStockCount}");
             }
             catch (Exception ex)
             {
@@ -515,11 +523,20 @@ namespace 爱普生墨盒管理系统.Views
                                 })
                         };
 
-                        // 为每个点添加值
-                        foreach (var item in stockData)
+                        // 确保为每个标签添加一个对应的值，即使是0
+                        // 这样可以保证图表生成的柱子数量与标签数量一致
+                        for (int i = 0; i < labels.Count; i++)
                         {
-                            double value = Convert.ToDouble(item.Value);
+                            string colorName = labels[i];
+                            double value = 0;
+                            // 寻找对应颜色的库存数据
+                            var stockItem = stockData.FirstOrDefault(item => item.Key == colorName);
+                            if (stockItem.Key != null) // 如果找到了对应的库存数据
+                            {
+                                value = Convert.ToDouble(stockItem.Value);
+                            }
                             columnSeries.Values.Add(value);
+                            Console.WriteLine($"添加数据点[{i}]: 颜色='{colorName}', 值={value}");
                         }
                         
                         // 添加到系列集合
@@ -645,34 +662,58 @@ namespace 爱普生墨盒管理系统.Views
                 var rectangles = new List<Rectangle>();
                 FindRectangles(chart, rectangles);
 
-                // 过滤出柱子（一般来说是较大的矩形）
-                var columns = rectangles
+                // 打印所有矩形元素的详细信息，帮助诊断
+                Console.WriteLine("所有矩形元素详情:");
+                foreach (var rect in rectangles)
+                {
+                    Console.WriteLine($"矩形: Width={rect.Width}, Height={rect.Height}, Left={Canvas.GetLeft(rect)}, Top={Canvas.GetTop(rect)}, Fill={rect.Fill}");
+                }
+
+                // 改进的过滤逻辑：只选取实际数据柱子
+                // 1. 首先按照原有标准筛选出潜在的柱子
+                var potentialColumns = rectangles
                     .Where(r => r.Width > 5 && r.Height > 5)
                     .OrderBy(r => Canvas.GetLeft(r))
                     .ToList();
+                
+                Console.WriteLine($"初步筛选：找到 {rectangles.Count} 个矩形元素，其中 {potentialColumns.Count} 个被初步认为是柱子");
 
-                Console.WriteLine($"找到 {rectangles.Count} 个矩形元素，其中 {columns.Count} 个被认为是柱子");
-
-                // 如果找到的矩形数量与颜色数量不匹配，记录警告
-                if (columns.Count != labels.Count)
+                // 2. 如果潜在柱子的数量与标签数量不一致，尝试更高级的筛选
+                List<Rectangle> columns = potentialColumns;
+                
+                if (potentialColumns.Count != labels.Count)
                 {
-                    Console.WriteLine($"警告：找到 {columns.Count} 个柱子，但有 {labels.Count} 种颜色，可能导致颜色错位");
-                    
-                    // 强制更新UI
-                    chart.UpdateLayout();
-                    
-                    // 尝试重新获取柱子
-                    rectangles.Clear();
-                    FindRectangles(chart, rectangles);
-                    columns = rectangles
-                        .Where(r => r.Width > 5 && r.Height > 5)
+                    // 尝试更精确的算法：按高度排序并取最高的N个(N=标签数量)
+                    // 这基于柱状图中实际数据柱子通常比其他装饰元素高的假设
+                    columns = potentialColumns
+                        .OrderByDescending(r => r.Height)
+                        .Take(labels.Count)
                         .OrderBy(r => Canvas.GetLeft(r))
                         .ToList();
-                        
-                    Console.WriteLine($"更新后: 找到 {rectangles.Count} 个矩形元素，其中 {columns.Count} 个被认为是柱子");
+                    
+                    Console.WriteLine($"高级筛选：从 {potentialColumns.Count} 个潜在柱子中选取高度最大的 {columns.Count} 个作为实际柱子");
+                    
+                    // 打印选中的柱子详情
+                    for (int i = 0; i < columns.Count; i++)
+                    {
+                        var col = columns[i];
+                        Console.WriteLine($"选中的柱子[{i}]: Width={col.Width}, Height={col.Height}, Left={Canvas.GetLeft(col)}");
+                    }
+                    
+                    // 如果仍然不匹配，做最后的调整
+                    if (columns.Count != labels.Count)
+                    {
+                        Console.WriteLine($"警告：筛选后仍有 {columns.Count} 个柱子，与 {labels.Count} 种颜色不匹配");
+                        Console.WriteLine("将使用可能不精确的颜色映射，图表颜色可能不准确");
+                    }
+                    else
+                    {
+                        Console.WriteLine("筛选成功：柱子数量与颜色数量匹配");
+                    }
                 }
 
                 // 为每个找到的柱子设置对应的颜色
+                int appliedCount = 0;
                 for (int i = 0; i < Math.Min(columns.Count, labels.Count); i++)
                 {
                     string colorName = labels[i];
@@ -695,6 +736,7 @@ namespace 爱普生墨盒管理系统.Views
 
                         // 设置柱子的背景色
                         columns[i].Fill = brush;
+                        appliedCount++;
                     }
                     catch (Exception colEx)
                     {
@@ -702,7 +744,13 @@ namespace 爱普生墨盒管理系统.Views
                     }
                 }
 
-                Console.WriteLine($"已为 {Math.Min(columns.Count, labels.Count)} 个柱子设置颜色");
+                Console.WriteLine($"已为 {appliedCount} 个柱子设置颜色");
+                
+                // 如果应用的颜色数量与标签数量一致，则算成功
+                if (appliedCount == labels.Count)
+                {
+                    Console.WriteLine("图表颜色应用成功：所有颜色标签都已正确应用");
+                }
             }
             catch (Exception ex)
             {
@@ -1021,7 +1069,28 @@ namespace 爱普生墨盒管理系统.Views
                 // 检查当前元素是否为Rectangle
                 if (parent is Rectangle rectangle)
                 {
+                    // 添加额外的筛选逻辑：排除可能的坐标轴线和其他非柱子矩形
+                    // 柱子通常有一个solid填充色，而且宽高都不会太小
+                    bool isPotentialColumn = 
+                        rectangle.Width > 5 && 
+                        rectangle.Height > 5 && 
+                        rectangle.Fill != null && 
+                        !(rectangle.Fill is LinearGradientBrush) && // 排除渐变填充，通常是装饰元素
+                        !(rectangle.Stroke != null && rectangle.StrokeThickness > 2); // 排除粗边框元素，通常是边框
+                    
+                    // 只添加可能的柱子，为调试目的也可以添加所有矩形并在后续过滤
                     rectangles.Add(rectangle);
+                    
+                    // 为调试目的记录更详细的信息
+                    string elementPath = GetElementPath(parent);
+                    bool isVisible = rectangle.Visibility == Visibility.Visible;
+                    bool hasRenderTransform = rectangle.RenderTransform != null && !(rectangle.RenderTransform is MatrixTransform);
+                    
+                    Console.WriteLine($"找到矩形: Width={rectangle.Width:F1}, Height={rectangle.Height:F1}, " +
+                                      $"Left={Canvas.GetLeft(rectangle):F1}, Top={Canvas.GetTop(rectangle):F1}, " +
+                                      $"可见={isVisible}, 潜在柱子={isPotentialColumn}, " +
+                                      $"Fill={rectangle.Fill?.GetType().Name ?? "null"}, " +
+                                      $"路径={elementPath}");
                 }
                 
                 // 获取子元素数量
@@ -1040,6 +1109,31 @@ namespace 爱普生墨盒管理系统.Views
             catch (Exception ex)
             {
                 Console.WriteLine($"查找Rectangle元素时出错: {ex.Message}");
+            }
+        }
+        
+        /// <summary>
+        /// 获取元素在可视化树中的路径
+        /// </summary>
+        private string GetElementPath(DependencyObject element)
+        {
+            try
+            {
+                if (element == null) return "null";
+                
+                var sb = new StringBuilder();
+                sb.Append(element.GetType().Name);
+                
+                if (element is FrameworkElement fe && !string.IsNullOrEmpty(fe.Name))
+                {
+                    sb.Append($"[{fe.Name}]");
+                }
+                
+                return sb.ToString();
+            }
+            catch
+            {
+                return element.GetType().Name;
             }
         }
 

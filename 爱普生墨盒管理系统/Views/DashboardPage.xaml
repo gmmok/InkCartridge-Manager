@@ -9,7 +9,7 @@
       d:DesignHeight="600" d:DesignWidth="800"
       Title="系统概览">
 
-    <Grid Margin="20">
+    <Grid Margin="10">
         <Grid.RowDefinitions>
             <RowDefinition Height="Auto"/>
             <RowDefinition Height="Auto"/>
@@ -19,7 +19,7 @@
         </Grid.RowDefinitions>
 
         <!-- 标题 -->
-        <TextBlock Grid.Row="0" Text="系统概览" FontSize="24" FontWeight="Bold" Margin="0,0,0,20"/>
+        <TextBlock Grid.Row="0" Text="系统概览" FontSize="24" FontWeight="Bold" Margin="0,0,0,10"/>
 
         <!-- 统计数据卡片 -->
         <Grid Grid.Row="1" Margin="0,0,0,20">
@@ -51,7 +51,7 @@
                         <RowDefinition Height="Auto"/>
                         <RowDefinition Height="Auto"/>
                     </Grid.RowDefinitions>
-                    <TextBlock Grid.Row="0" Text="库存不足墨盒数" FontSize="16" Foreground="#E65100"/>
+                    <TextBlock Grid.Row="0" Text="预警库存或无库存墨盒数" FontSize="16" Foreground="#E65100"/>
                     <TextBlock Grid.Row="1" x:Name="txtLowStockCartridges" Text="0" FontSize="28" FontWeight="Bold" Foreground="#E65100" Margin="0,5,0,0"/>
                 </Grid>
             </Border>
@@ -136,13 +136,13 @@
                 </lvc:CartesianChart>
 
                 <!-- X轴标题 -->
-                <TextBlock Grid.Row="2" 
+                <!--<TextBlock Grid.Row="2" 
                            Text="墨盒颜色" 
                            FontSize="16" 
                            FontWeight="SemiBold" 
                            HorizontalAlignment="Center" 
                            VerticalAlignment="Center" 
-                           Margin="0,40,0,0"/>
+                           Margin="0,0,0,0"/>-->
             </Grid>
         </Border>
 
@@ -154,12 +154,12 @@
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="库存不足墨盒(这里预警的某个型号使用完了，不是总墨盒，总墨盒看柱状图)" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                <TextBlock Grid.Row="0" Text="预警库存或无库存墨盒列表" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
 
                 <TextBlock x:Name="tbNoDataHint" Grid.Row="1" Text="暂无墨盒数据，请先添加墨盒。" 
                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
 
-                <TextBlock x:Name="txtLowStockHint" Grid.Row="1" Text="没有库存不足的墨盒" 
+                <TextBlock x:Name="txtLowStockHint" Grid.Row="1" Text="所有墨盒库存正常，没有库存不足或无库存的墨盒" 
                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>
 
                 <ListView x:Name="lvLowStock" Grid.Row="1" Visibility="Visible">

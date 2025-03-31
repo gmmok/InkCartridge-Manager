@@ -120,9 +120,11 @@ namespace 爱普生墨盒管理系统.Utils
                     _currentLanguage = _resources.Keys.First(k => k.StartsWith(culture.TwoLetterISOLanguageName));
                 }
             }
-            catch
+            catch (Exception ex)
             {
                 // 如果获取系统语言失败，使用默认中文
+                Console.WriteLine($"获取系统语言失败: {ex.Message}");
+                Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
                 _currentLanguage = "zh-CN";
             }
         }
@@ -201,8 +203,11 @@ namespace 爱普生墨盒管理系统.Utils
                 {
                     return string.Format(value, args);
                 }
-                catch
+                catch (Exception ex)
                 {
+                    Console.WriteLine($"格式化本地化字符串失败，键: {key}, 值: {value}");
+                    Console.WriteLine($"错误: {ex.Message}");
+                    Console.WriteLine($"堆栈跟踪: {ex.StackTrace}");
                     return value;
                 }
             }

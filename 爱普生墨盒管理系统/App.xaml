@@ -5,14 +5,14 @@
              StartupUri="MainWindow.xaml">
     <Application.Resources>
         <ResourceDictionary>
-            <!--<ResourceDictionary.MergedDictionaries>
-                --><!-- MahApps.Metro资源字典 --><!--
+            <ResourceDictionary.MergedDictionaries>
+                 <!--MahApps.Metro资源字典--> 
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Controls.xaml" />
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Fonts.xaml" />
 
-                --><!-- 主题颜色 - 选择一个喜欢的主题 --><!--
+                 <!--主题颜色 - 选择一个喜欢的主题--> 
                 <ResourceDictionary Source="pack://application:,,,/MahApps.Metro;component/Styles/Themes/Light.Blue.xaml" />
-            </ResourceDictionary.MergedDictionaries>-->
+            </ResourceDictionary.MergedDictionaries>
 
             <!-- 全局按钮样式 -->
             <Style TargetType="Button">
