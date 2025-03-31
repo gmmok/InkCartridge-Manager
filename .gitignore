@@ -54,3 +54,64 @@ yarn.lock
 *.tmp_proj
 *.vspscc
 *.vssscc
+
+# GitHub特有文件
+.github/workflows/
+!.github/ISSUE_TEMPLATE/
+!.github/PULL_REQUEST_TEMPLATE.md
+
+# 用户特定的本地化配置
+localsettings.json
+usersettings.json
+
+# 证书和密钥文件
+*.pfx
+*.key
+*.cer
+*.pem
+
+# 历史记录和文件恢复文件
+_ReSharper*/
+*.resharper
+*.[Rr]e[Ss]harper
+*.DotSettings.user
+
+# SQL Server数据库文件(如果有)
+*.mdf
+*.ldf
+*.ndf
+
+# 更精确的文档排除规则(保留必要的XML)
+[Dd]oc/
+*/bin/*.xml
+*/obj/*.xml
+!App.config
+!packages.config
+!*.csproj
+!*.sln
+
+# Gitee特有的文件
+.gitee/
+
+# 常见国内IDE配置
+.hbuilderx/
+*.hui
+*__MACOSX/
+
+# 可能的中文问题文件备份
+*[备份]*
+*[副本]*
+*[测试]*
+*~$*
+
+# Windows系统文件
+[Dd]esktop.ini
+
+# 汉字编码问题可能产生的临时文件
+*.~*
+*._*
+
+# 中文环境下的编码设置
+*.cs text diff=csharp encoding=utf-8
+*.xaml text encoding=utf-8
+*.md text encoding=utf-8

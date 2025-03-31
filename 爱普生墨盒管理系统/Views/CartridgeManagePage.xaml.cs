@@ -445,8 +445,8 @@ namespace 爱普生墨盒管理系统.Views
                 txtColor.Focus();
                 
                 // 显示提示信息
-                MessageBox.Show("您可以从列表中点击任意一行墨盒，将其信息加载为模板快速添加新墨盒。", 
-                    "操作提示", MessageBoxButton.OK, MessageBoxImage.Information);
+                //MessageBox.Show("您可以从列表中点击任意一行墨盒，将其信息加载为模板快速添加新墨盒。", 
+                //    "操作提示", MessageBoxButton.OK, MessageBoxImage.Information);
                 
                 Console.WriteLine("进入添加新墨盒模式，已清空表单");
             }

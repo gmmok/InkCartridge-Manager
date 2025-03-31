@@ -189,14 +189,14 @@
         </Border>
 
         <!-- 最近操作记录 -->
-        <Border Grid.Row="4" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="5" Margin="0,10,0,0">
+        <Border Grid.Row="4" BorderBrush="#DDDDDD" BorderThickness="1" CornerRadius="5">
             <Grid Margin="10">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="Auto"/>
                     <RowDefinition Height="*"/>
                 </Grid.RowDefinitions>
 
-                <TextBlock Grid.Row="0" Text="最近操作记录" FontSize="18" FontWeight="SemiBold" Margin="0,0,0,10"/>
+                <TextBlock Grid.Row="0" Text="最近操作记录" FontSize="18" FontWeight="SemiBold"/>
 
                 <TextBlock x:Name="txtRecentOperationsHint" Grid.Row="1" Text="暂无操作记录" 
                            HorizontalAlignment="Center" VerticalAlignment="Center" Visibility="Collapsed"/>

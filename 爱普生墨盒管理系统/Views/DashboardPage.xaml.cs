@@ -504,6 +504,8 @@ namespace 爱普生墨盒管理系统.Views
                             StrokeThickness = 1,
                             MaxColumnWidth = 40,
                             ColumnPadding = 12,
+                            // 隐藏鼠标悬停时的蓝色圆圈
+                            PointGeometry = null,
                             // 设置悬停指示器样式
                             Configuration = new CartesianMapper<double>()
                                 .X((value, index) => index)
@@ -1036,6 +1038,7 @@ namespace 爱普生墨盒管理系统.Views
         /// <summary>
         /// 检查数据库是否已初始化并确保颜色表有数据
         /// </summary>
+        [System.Diagnostics.CodeAnalysis.SuppressMessage("CodeQuality", "IDE0051:删除未使用的私有成员", Justification = "保留用于将来可能的扩展")]
         private bool CheckDatabaseInitialized()
         {
             try
