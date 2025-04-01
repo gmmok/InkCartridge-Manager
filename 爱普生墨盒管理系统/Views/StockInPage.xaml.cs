@@ -276,7 +276,7 @@ namespace 爱普生墨盒管理系统.Views
         /// <summary>
         /// 提交入库按钮点击事件
         /// </summary>
-        private async void btnSubmit_Click(object sender, RoutedEventArgs e)
+        private void btnSubmit_Click(object sender, RoutedEventArgs e)  // 移除 async 修饰符
         {
             try
             {
@@ -411,4 +411,4 @@ namespace 爱普生墨盒管理系统.Views
             LoadRecentRecords();
         }
     }
-} 
+}
